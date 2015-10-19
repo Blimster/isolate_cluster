@@ -13,9 +13,9 @@ import 'package:isolate_cluster/isolate_cluster.dart';
 main() {
 
   var cluster = new IsolateCluster.singleNode();
-  cluster.spawnIsolate(sender, { 'id': 1});
-  cluster.spawnIsolate(sender, { 'id': 2});
-  cluster.spawnIsolate(receiver, { 'type': 'receiver'});
+  cluster.spawnIsolate(sender, {'id': 1});
+  cluster.spawnIsolate(sender, {'id': 2});
+  cluster.spawnIsolate(receiver, {'type': 'receiver'});
 
 }
 
@@ -28,8 +28,9 @@ receiver(IsolateContext context) async {
 
 sender(IsolateContext context) async {
 
-  print('started sender id = ${context.property('id')}');
+  print('started sender with id = ${context.property('id')}');
   context.onIsolateUp.where((ref) => ref.property('type') == 'receiver').listen((ref) => ref.send('message from sender ${context.property('id')}'));
+  
 }
 
 ```
