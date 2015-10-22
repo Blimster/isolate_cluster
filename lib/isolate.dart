@@ -37,12 +37,11 @@ class IsolateContext {
   StreamController<String> _payloadStreamController;
   StreamController<IsolateRef> _isolateUpStreamController;
 
-  IsolateContext._internal(this._sendPort, this._receivePort, this._properties, Iterable<IsolateRef> existingRefs) {
+  IsolateContext._internal(this._sendPort, this._receivePort, this._properties) {
     _payloadStreamController = new StreamController();
     _receivePort.listen((msg) => _processMessage(msg));
 
     _isolateUpStreamController = new StreamController();
-    existingRefs.forEach((ref) => _isolateUpStreamController.add(ref));
   }
 
   property(String key) => _properties[key];

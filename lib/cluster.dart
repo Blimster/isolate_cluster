@@ -34,7 +34,7 @@ class IsolateCluster {
       receivePort.listen((msg) => print('msg from isolate received: $msg'));
 
       // spawn the isolate and wait for it
-      Isolate isolate = await Isolate.spawn(_bootstrapIsolate, new _BootstrapIsolateMsg(receivePortBootstrap.sendPort, receivePort.sendPort, entryPoint, properties, new Set.from(_isolateRefs)));
+      Isolate isolate = await Isolate.spawn(_bootstrapIsolate, new _BootstrapIsolateMsg(receivePortBootstrap.sendPort, receivePort.sendPort, entryPoint, properties));
 
       // wait for the first message from the spawned isolate
       _IsolateBootstrappedMsg isolateSpawnedMsg = await receivePortBootstrap.first;
@@ -76,7 +76,7 @@ _bootstrapIsolate(_BootstrapIsolateMsg msg) {
   ReceivePort receivePort = new ReceivePort();
 
   msg.sendPortBootstrap.send(new _IsolateBootstrappedMsg(receivePort.sendPort));
-  msg.entryPoint(new IsolateContext._internal(msg.sendPortPayload, receivePort, msg.properties, msg.existingRefs));
+  msg.entryPoint(new IsolateContext._internal(msg.sendPortPayload, receivePort, msg.properties));
 
 }
 
