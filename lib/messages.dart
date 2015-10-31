@@ -34,3 +34,19 @@ class _IsolateUpMsg {
   const _IsolateUpMsg(this.isolateRef);
 
 }
+
+class _ShutdownRequestMsg {
+
+  static const _ShutdownRequestMsg INSTANCE = const _ShutdownRequestMsg();
+
+  const _ShutdownRequestMsg();
+
+}
+
+class _ReadyForShutdownMsg {
+
+  static const _ReadyForShutdownMsg INSTANCE = const _ReadyForShutdownMsg();
+
+  const _ReadyForShutdownMsg();
+
+}
