@@ -89,8 +89,8 @@ class IsolateCluster {
     }
 
     // send a shutdown request to all isolates
-    _isolateRefs
-        .forEach((ref) => ref._sendPort.send(_ShutdownRequestMsg.INSTANCE));
+    _isolateRefs.forEach(
+        (ref) => ref._sendPort.send(_IsolateShutdownRequestMsg.INSTANCE));
 
     Completer<bool> completer = new Completer();
 
@@ -105,15 +105,16 @@ class IsolateCluster {
         completer.complete(false);
       }
     };
-    new Timer.periodic(
-        new Duration(milliseconds: 10), shutdownCompleteWatcher);
+    new Timer.periodic(new Duration(milliseconds: 10), shutdownCompleteWatcher);
 
     return completer.future;
   }
 
   _onIsolateMessage(IsolateRef ref, var msg) {
-    if (msg is _ReadyForShutdownMsg) {
+    if (msg is _IsolateReadyForShutdownMsg) {
       _killIsolate(ref);
+    } else if (msg is _NodeShutdownRequestMsg) {
+      shutdown(timeout: (msg as _NodeShutdownRequestMsg).duration);
     }
   }
 

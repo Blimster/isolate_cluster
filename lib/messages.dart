@@ -1,52 +1,49 @@
 part of isolate_cluster;
 
 class _BootstrapIsolateMsg {
-
   final SendPort sendPortBootstrap;
   final SendPort sendPortPayload;
   final EntryPoint entryPoint;
   final Map<String, dynamic> properties;
 
-  const _BootstrapIsolateMsg(this.sendPortBootstrap, this.sendPortPayload, this.entryPoint, this.properties);
-
+  const _BootstrapIsolateMsg(this.sendPortBootstrap, this.sendPortPayload,
+      this.entryPoint, this.properties);
 }
 
 class _IsolateBootstrappedMsg {
-
   final SendPort sendPort;
 
   const _IsolateBootstrappedMsg(this.sendPort);
-
 }
 
 class _PayloadMsg {
-
   final String payload;
 
   const _PayloadMsg(this.payload);
-
 }
 
 class _IsolateUpMsg {
-
   final IsolateRef isolateRef;
 
   const _IsolateUpMsg(this.isolateRef);
-
 }
 
-class _ShutdownRequestMsg {
+class _IsolateShutdownRequestMsg {
+  static const _IsolateShutdownRequestMsg INSTANCE =
+      const _IsolateShutdownRequestMsg();
 
-  static const _ShutdownRequestMsg INSTANCE = const _ShutdownRequestMsg();
-
-  const _ShutdownRequestMsg();
-
+  const _IsolateShutdownRequestMsg();
 }
 
-class _ReadyForShutdownMsg {
+class _IsolateReadyForShutdownMsg {
+  static const _IsolateReadyForShutdownMsg INSTANCE =
+      const _IsolateReadyForShutdownMsg();
 
-  static const _ReadyForShutdownMsg INSTANCE = const _ReadyForShutdownMsg();
+  const _IsolateReadyForShutdownMsg();
+}
 
-  const _ReadyForShutdownMsg();
+class _NodeShutdownRequestMsg {
+  final Duration duration;
 
+  const _NodeShutdownRequestMsg(this.duration);
 }

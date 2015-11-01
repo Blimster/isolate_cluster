@@ -57,10 +57,14 @@ class IsolateContext {
 
   set shutdownRequestListener(ShutdownRequestListener listener) => _shutdownRequestListener = listener;
 
-  shutdown() {
+  shutdownIsolate() {
     _payloadStreamController.close();
     _isolateUpStreamController.close();
-    _sendPort.send(_ReadyForShutdownMsg.INSTANCE);
+    _sendPort.send(_IsolateReadyForShutdownMsg.INSTANCE);
+  }
+
+  shutdownNode({Duration timeout}) {
+    _sendPort.send(new _NodeShutdownRequestMsg(timeout));
   }
 
   _processMessage(var msg) {
@@ -70,12 +74,12 @@ class IsolateContext {
     else if(msg is _IsolateUpMsg) {
       _isolateUpStreamController.add((msg as _IsolateUpMsg).isolateRef);
     }
-    else if(msg is _ShutdownRequestMsg) {
+    else if(msg is _IsolateShutdownRequestMsg) {
       if(_shutdownRequestListener != null) {
         _shutdownRequestListener();
       }
       else {
-        _sendPort.send(_ReadyForShutdownMsg.INSTANCE);
+        _sendPort.send(_IsolateReadyForShutdownMsg.INSTANCE);
       }
     }
   }
