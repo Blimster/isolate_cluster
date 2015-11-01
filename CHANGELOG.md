@@ -1,3 +1,8 @@
+# Version 0.x.x
+
+- Added documentation comments to all parts of the public API.
+- ...
+
 # Version 0.3.0
 
 - A cluster can now be stopped by calling IsolateCluster.shutdown()

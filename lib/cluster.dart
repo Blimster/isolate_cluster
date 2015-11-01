@@ -1,8 +1,8 @@
 part of isolate_cluster;
 
 /**
- * Create an instance of this class to start an isolate cluster. All isolates spawned by the same instance of an
- * IsolateCluster will know each other and are able to send messages to each other.
+ * Create an instance of this class to start a node of an isolate cluster. All isolates spawned by any node of the same
+ * cluster will be able to communicate with each other using the provided API.
  */
 class IsolateCluster {
   Map<IsolateRef, ReceivePort> _receivePorts = {};
@@ -10,8 +10,22 @@ class IsolateCluster {
   Queue<Function> _spawnQueue = new Queue();
   bool _spawning = false;
 
+  /**
+   * Creates the node for a single-node cluster. After the is constructed, the the cluster is up and usable.
+   */
   IsolateCluster.singleNode();
 
+  /**
+   * Spawns a new isolate in the cluster this node belongs to. The provided [entryPoint] is called after the isolate is
+   * spawned.
+   *
+   * You have to provide an [EntryPoint], that is called after the isolate is spawned. The entry point is executed in
+   * spawned isolate.
+   *
+   * You can provide some [properties] optionally.
+   *
+   * This method returns a future which completes with an reference to the isolate.
+   */
   Future<IsolateRef> spawnIsolate(EntryPoint entryPoint,
       [Map<String, dynamic> properties]) async {
     // create a copy of the provided map or an empty one, if the caller do not provide properties
@@ -82,6 +96,15 @@ class IsolateCluster {
     return completer.future;
   }
 
+  /**
+   * Shuts down this node of the cluster. Every isolate spawned by this node will receive a request for shutdown. When
+   * all isolates have accepted the request, the future returned completes with [true].
+   *
+   * If any isolate do not accept the shut down request within the given [timeout], the future returned completes with
+   * [false].
+   *
+   * In both cases, then the future completes, all isolates of this node are killed.
+   */
   Future<bool> shutdown({Duration timeout}) {
     // set default timeout if not provided
     if (timeout == null) {
