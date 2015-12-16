@@ -5,8 +5,9 @@ part of isolate_cluster;
  * cluster will be able to communicate with each other using the provided API.
  */
 class IsolateCluster {
-  Map<IsolateRef, ReceivePort> _receivePorts = {};
-  List<IsolateRef> _isolateRefs = [];
+
+  Map<Uri, ReceivePort> _receivePorts = {};
+  Map<Uri, IsolateRef> _isolateRefs = {};
   Queue<Function> _spawnQueue = new Queue();
   bool _spawning = false;
 
@@ -16,17 +17,15 @@ class IsolateCluster {
   IsolateCluster.singleNode();
 
   /**
-   * Spawns a new isolate in the cluster this node belongs to. The provided [entryPoint] is called after the isolate is
-   * spawned.
-   *
-   * You have to provide an [EntryPoint], that is called after the isolate is spawned. The entry point is executed in
-   * spawned isolate.
+   * Spawns a new isolate in the cluster this node belongs to. The provided
+   * [EntryPoint] is called after the isolate is spawned. The entry point is
+   * executed in spawned isolate.
    *
    * You can provide some [properties] optionally.
    *
    * This method returns a future which completes with an reference to the isolate.
    */
-  Future<IsolateRef> spawnIsolate(EntryPoint entryPoint,
+  Future<IsolateRef> spawnIsolate(Uri path, EntryPoint entryPoint,
       [Map<String, dynamic> properties]) async {
     // create a copy of the provided map or an empty one, if the caller do not provide properties
     if (properties != null) {
@@ -35,38 +34,62 @@ class IsolateCluster {
       properties = {};
     }
 
+    // validate path param
+    if (path == null) {
+      throw new ArgumentError.notNull('path');
+    }
+    if (!path.hasAbsolutePath) {
+      throw new ArgumentError.value(
+          path.hasAbsolutePath, 'path.hasAbsolutePath');
+    }
+
     // this method returns a future that completes to an isolate ref. the completer helps to create that future.
     Completer<IsolateRef> completer = new Completer();
 
     // add the function that spawns the isolate to a queue. the functions in the queue are executed one by one.
     _spawnQueue.addLast(() async {
+      if (path.pathSegments.last.isEmpty) {
+        // path ends with a slash(/). add an segment to the path, so the path is
+        // unique
+        var temp = path.resolve(new Uuid().v4());
+        while (_isolateRefs.containsKey(temp)) {
+          temp = path.resolve(new Uuid().v4());
+        }
+        path = temp;
+      } else {
+        // path does not end with a slash (/). is the path already in use?
+        if (_isolateRefs.containsKey(path)) {
+          throw new ArgumentError.value(path, 'path', 'path already in use!');
+        }
+      }
+
       // create receive port for the bootstrap response
-      ReceivePort receivePortBootstrap = new ReceivePort();
+      var receivePortBootstrap = new ReceivePort();
 
       // create a port to receive messages from the isolate
-      ReceivePort receivePort = new ReceivePort();
+      var receivePort = new ReceivePort();
 
       // spawn the isolate and wait for it
-      Isolate isolate = await Isolate.spawn(
+      var isolate = await Isolate.spawn(
           _bootstrapIsolate,
           new _BootstrapIsolateMsg(receivePortBootstrap.sendPort,
-              receivePort.sendPort, entryPoint, properties));
+              receivePort.sendPort, entryPoint, path, properties));
 
       // wait for the first message from the spawned isolate
-      _IsolateBootstrappedMsg isolateSpawnedMsg =
-          await receivePortBootstrap.first;
+      var isolateSpawnedMsg =
+      await receivePortBootstrap.first;
 
       // create and store a reference to the spawned isolate
-      IsolateRef newRef = new IsolateRef._internal(
-          isolate, isolateSpawnedMsg.sendPort, properties);
-      _isolateRefs.add(newRef);
+      var newRef = new IsolateRef._internal(
+          isolate, isolateSpawnedMsg.sendPort, path, properties);
+      _isolateRefs[path] = newRef;
 
       // store the receiver and start listening to messages from the isolate
-      _receivePorts[newRef] = receivePort;
+      _receivePorts[newRef._path] = receivePort;
       receivePort.listen((msg) => _onIsolateMessage(newRef, msg));
 
       // send isolate up msg to all already existing isolates
-      _isolateRefs
+      _isolateRefs.values
           .where((ref) => ref != newRef)
           .forEach((ref) => ref._sendPort.send(new _IsolateUpMsg(newRef)));
 
@@ -83,7 +106,7 @@ class IsolateCluster {
           // as long as there are functions in the queue...
           while (_spawnQueue.isNotEmpty) {
             // remove the function, execute it and wait until it is completed.
-            Function spawnFunction = _spawnQueue.removeFirst();
+            var spawnFunction = _spawnQueue.removeFirst();
             await spawnFunction();
           }
         } finally {
@@ -103,7 +126,7 @@ class IsolateCluster {
    * If any isolate do not accept the shut down request within the given [timeout], the future returned completes with
    * [false].
    *
-   * In both cases, then the future completes, all isolates of this node are killed.
+   * In both cases, when the future is completed, all isolates of this node are killed.
    */
   Future<bool> shutdown({Duration timeout}) {
     // set default timeout if not provided
@@ -112,18 +135,19 @@ class IsolateCluster {
     }
 
     // send a shutdown request to all isolates
-    _isolateRefs.forEach(
+    _isolateRefs.values.forEach(
         (ref) => ref._sendPort.send(_IsolateShutdownRequestMsg.INSTANCE));
 
-    Completer<bool> completer = new Completer();
+    var completer = new Completer<bool>();
 
-    Stopwatch sw = new Stopwatch()..start();
+    var sw = new Stopwatch()
+      ..start();
     var shutdownCompleteWatcher = (Timer timer) {
       if (_receivePorts.isEmpty) {
         timer.cancel();
         completer.complete(true);
       } else if (sw.elapsed >= timeout) {
-        new List.from(_isolateRefs).forEach((ref) => _killIsolate(ref));
+        new List.from(_isolateRefs.values).forEach((ref) => _killIsolate(ref));
         timer.cancel();
         completer.complete(false);
       }
@@ -143,16 +167,8 @@ class IsolateCluster {
 
   _killIsolate(IsolateRef ref) {
     ref._isolate.kill();
-    _isolateRefs.remove(ref);
-    ReceivePort receivePort = _receivePorts.remove(ref);
+    _isolateRefs.remove(ref._path);
+    ReceivePort receivePort = _receivePorts.remove(ref._path);
     receivePort.close();
   }
-}
-
-_bootstrapIsolate(_BootstrapIsolateMsg msg) {
-  ReceivePort receivePort = new ReceivePort();
-
-  msg.sendPortBootstrap.send(new _IsolateBootstrappedMsg(receivePort.sendPort));
-  msg.entryPoint(new IsolateContext._internal(
-      msg.sendPortPayload, receivePort, msg.properties));
 }
