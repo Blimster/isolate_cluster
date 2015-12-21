@@ -12,26 +12,35 @@ typedef EntryPoint();
 typedef ShutdownRequestListener();
 
 /**
- * An envelope for a message sent to an isolate containing the sender and the message itself.
+ * A message sent to an isolate containing the [sender], [replyTo] and the [content].
  */
-class Envelope {
+class Message {
 
   final IsolateRef _sender;
   final IsolateRef _replyTo;
-  final String _message;
+  final String _content;
 
-  const Envelope._internal(this._sender, this._replyTo, this._message);
+  const Message._internal(this._sender, this._replyTo, this._content);
 
-  String toString() {
-    return '[Envelope][sender=${_sender?.path}, replyTo=${_replyTo
-        ?.path}, message=$_message]';
-  }
-
+  /**
+   * Returns an isolate ref to the the sender of this messages.
+   */
   IsolateRef get sender => _sender;
 
+  /**
+   * Returns an isolate ref the receiver of this message should reply to.
+   */
   IsolateRef get replyTo => _replyTo;
 
-  String get message => _message;
+  /**
+   * Returns the content of this message.
+   */
+  String get content => _content;
+
+  String toString() {
+    return '[Message][sender=${_sender?.path}, replyTo=${_replyTo
+        ?.path}, content=$_content]';
+  }
 
 }
 
@@ -82,7 +91,7 @@ class IsolateContext {
   final ReceivePort _receivePort;
   final Uri _path;
   final Map<String, dynamic> _properties;
-  final StreamController<Envelope> _payloadStreamController = new StreamController();
+  final StreamController<Message> _payloadStreamController = new StreamController();
   final StreamController<IsolateRef> _isolateUpStreamController = new StreamController();
   ShutdownRequestListener _shutdownRequestListener;
 
@@ -105,7 +114,7 @@ class IsolateContext {
   /**
    * A stream of message sent to the isolate this context is bound to.
    */
-  Stream<Envelope> get onMessage => _payloadStreamController.stream;
+  Stream<Message> get onMessage => _payloadStreamController.stream;
 
   /**
    * A stream of isolate up events.
@@ -137,7 +146,7 @@ class IsolateContext {
   _processMessage(var msg) {
     if (msg is _PayloadMsg) {
       _PayloadMsg payloadMsg = (msg as _PayloadMsg);
-      _payloadStreamController.add(new Envelope._internal(
+      _payloadStreamController.add(new Message._internal(
           payloadMsg.sender, payloadMsg.replyTo, payloadMsg.payload));
     }
     else if (msg is _IsolateUpMsg) {
@@ -152,6 +161,10 @@ class IsolateContext {
         _sendPort.send(_IsolateReadyForShutdownMsg.INSTANCE);
       }
     }
+  }
+
+  String toString() {
+    return _path.toString();
   }
 
 }
