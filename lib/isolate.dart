@@ -169,6 +169,11 @@ class IsolateContext {
 
 }
 
+/**
+ * Getter for the local [IsolateContext].
+ */
+IsolateContext get context => _context;
+
 // this function is called after the new isolate is spawned
 _bootstrapIsolate(_BootstrapIsolateMsg msg) {
   var receivePort = new ReceivePort();
@@ -184,9 +189,6 @@ _bootstrapIsolate(_BootstrapIsolateMsg msg) {
   msg.sendPortBootstrap.send(new _IsolateBootstrappedMsg(receivePort.sendPort));
   msg.entryPoint();
 }
-
-// getter for the local isolate context
-IsolateContext get context => _context;
 
 // this isolate ref represents the local isolate.
 IsolateRef _localIsolateRef;
