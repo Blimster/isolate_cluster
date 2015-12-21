@@ -171,6 +171,9 @@ class IsolateCluster {
       _killIsolate(_isolateInfos[ref.path]);
     } else if (msg is _NodeShutdownRequestMsg) {
       shutdown(timeout: (msg as _NodeShutdownRequestMsg).duration);
+    } else if (msg is _IsolateLookUpMsg) {
+      Uri path = (msg as _IsolateLookUpMsg).path;
+      ref._sendPort.send(new _IsolateLookedUpMsg(path, _isolateInfos[path].isolateRef));
     }
   }
 
@@ -179,6 +182,7 @@ class IsolateCluster {
     isolate.receivePort.close();
     _isolateInfos.remove(isolate.isolateRef._path);
   }
+
 }
 
 class _IsolateInfo {

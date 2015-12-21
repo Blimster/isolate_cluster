@@ -87,6 +87,8 @@ class IsolateRef {
  */
 class IsolateContext {
 
+  final Map<Uri, Completer<IsolateRef>> _pendingLookUps = {};
+  final Map<Uri, IsolateRef> _isolateRefs = {};
   final SendPort _sendPort;
   final ReceivePort _receivePort;
   final Uri _path;
@@ -128,6 +130,24 @@ class IsolateContext {
       _shutdownRequestListener = listener;
 
   /**
+   * Looks up an isolate by its path. The returned future completes with a [IsolateRef], if an isolate with the given
+   * path is present in this cluster. If no isolate is found, the future completes with [null].
+   */
+  Future<IsolateRef> lookupIsolate(Uri path) async {
+    if(path == null) {
+      return new Future.value(null);
+    }
+    var isolateRef = _isolateRefs[path];
+    if (isolateRef != null) {
+      return new Future.value(isolateRef);
+    }
+    _sendPort.send(new _IsolateLookUpMsg(path));
+    var completer = new Completer<IsolateRef>();
+    _pendingLookUps[path] = completer;
+    return completer.future;
+  }
+
+  /**
    * Shuts down the isolate this context is bound to.
    */
   shutdownIsolate() {
@@ -148,17 +168,21 @@ class IsolateContext {
       _PayloadMsg payloadMsg = (msg as _PayloadMsg);
       _payloadStreamController.add(new Message._internal(
           payloadMsg.sender, payloadMsg.replyTo, payloadMsg.payload));
-    }
-    else if (msg is _IsolateUpMsg) {
+    } else if (msg is _IsolateUpMsg) {
       var isolateUpMsg = (msg as _IsolateUpMsg);
       _isolateUpStreamController.add(isolateUpMsg.isolateRef);
-    }
-    else if (msg is _IsolateShutdownRequestMsg) {
+    } else if (msg is _IsolateShutdownRequestMsg) {
       if (_shutdownRequestListener != null) {
         _shutdownRequestListener();
-      }
-      else {
+      } else {
         _sendPort.send(_IsolateReadyForShutdownMsg.INSTANCE);
+      }
+    } else if (msg is _IsolateLookedUpMsg) {
+      _IsolateLookedUpMsg isolateLookedUpMsg = (msg as _IsolateLookedUpMsg);
+      if (isolateLookedUpMsg.isolateRef != null) {
+        _isolateRefs[isolateLookedUpMsg.path] = isolateLookedUpMsg.isolateRef;
+        var completer = _pendingLookUps.remove(isolateLookedUpMsg.path);
+        completer.complete(isolateLookedUpMsg.isolateRef);
       }
     }
   }

@@ -25,6 +25,19 @@ class _PayloadMsg {
   const _PayloadMsg(this.sender, this.replyTo, this.payload);
 }
 
+class _IsolateLookUpMsg {
+  final Uri path;
+
+  const _IsolateLookUpMsg(this.path);
+}
+
+class _IsolateLookedUpMsg {
+  final Uri path;
+  final IsolateRef isolateRef;
+
+  const _IsolateLookedUpMsg(this.path, this.isolateRef);
+}
+
 class _IsolateUpMsg {
   final IsolateRef isolateRef;
 
