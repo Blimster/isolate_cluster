@@ -6,8 +6,6 @@ part of isolate_cluster;
  */
 class IsolateCluster {
 
-  // TODO create an IsolateRef for the main isolate
-
   Map<Uri, _IsolateInfo> _isolateInfos = {};
   Queue<Function> _spawnQueue = new Queue();
   bool _spawning = false;
@@ -120,6 +118,14 @@ class IsolateCluster {
 
     // return a future that completes with the isolate ref created by the spawn function above.
     return completer.future;
+  }
+
+  /**
+   * Looks up an isolate by its path. The returned future completes with a [IsolateRef], if an isolate with the given
+   * path is present in this cluster. If no isolate is found, the future completes with [null].
+   */
+  Future<IsolateRef> lookupIsolate(Uri path) async {
+    return new Future.value(_isolateInfos[path].isolateRef);
   }
 
   /**
