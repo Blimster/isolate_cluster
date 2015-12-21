@@ -3,7 +3,7 @@ part of isolate_cluster;
 /**
  * The entry point for an isolate spawned by IsolateCluster.
  */
-typedef EntryPoint(IsolateContext context);
+typedef EntryPoint();
 
 /**
  * A listener to a request for shutdown an isolate. Such a listener should release resource acquired by the isolate
@@ -40,12 +40,11 @@ class Envelope {
  */
 class IsolateRef {
 
-  final Isolate _isolate;
   final SendPort _sendPort;
   final Uri _path;
   final Map<String, dynamic> _properties;
 
-  IsolateRef._internal(this._isolate, this._sendPort, this._path,
+  IsolateRef._internal(this._sendPort, this._path,
       this._properties);
 
   /**
@@ -83,10 +82,8 @@ class IsolateContext {
   final ReceivePort _receivePort;
   final Uri _path;
   final Map<String, dynamic> _properties;
-  final StreamController<
-      Envelope> _payloadStreamController = new StreamController();
-  final StreamController<
-      IsolateRef> _isolateUpStreamController = new StreamController();
+  final StreamController<Envelope> _payloadStreamController = new StreamController();
+  final StreamController<IsolateRef> _isolateUpStreamController = new StreamController();
   ShutdownRequestListener _shutdownRequestListener;
 
 
@@ -165,13 +162,21 @@ _bootstrapIsolate(_BootstrapIsolateMsg msg) {
 
   // initialize the local isolate ref
   _localIsolateRef = new IsolateRef._internal(
-      Isolate.current, receivePort.sendPort, msg.path, msg.properties);
+      receivePort.sendPort, msg.path, msg.properties);
+
+  // create the context and store it local to this isolate
+  _context = new IsolateContext._internal(
+      msg.sendPortPayload, receivePort, msg.path, msg.properties);
 
   msg.sendPortBootstrap.send(new _IsolateBootstrappedMsg(receivePort.sendPort));
-  msg.entryPoint(new IsolateContext._internal(
-      msg.sendPortPayload, receivePort, msg.path, msg.properties));
+  msg.entryPoint();
 }
 
+// getter for the local isolate context
+IsolateContext get context => _context;
 
 // this isolate ref represents the local isolate.
 IsolateRef _localIsolateRef;
+
+// isolate context for the local isolate
+IsolateContext _context;

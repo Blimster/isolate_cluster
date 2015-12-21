@@ -6,8 +6,9 @@ part of isolate_cluster;
  */
 class IsolateCluster {
 
-  Map<Uri, ReceivePort> _receivePorts = {};
-  Map<Uri, IsolateRef> _isolateRefs = {};
+  // TODO create an IsolateRef for the main isolate
+
+  Map<Uri, _IsolateInfo> _isolateInfos = {};
   Queue<Function> _spawnQueue = new Queue();
   bool _spawning = false;
 
@@ -52,13 +53,13 @@ class IsolateCluster {
         // path ends with a slash(/). add an segment to the path, so the path is
         // unique
         var temp = path.resolve(new Uuid().v4());
-        while (_isolateRefs.containsKey(temp)) {
+        while (_isolateInfos.containsKey(temp)) {
           temp = path.resolve(new Uuid().v4());
         }
         path = temp;
       } else {
         // path does not end with a slash (/). is the path already in use?
-        if (_isolateRefs.containsKey(path)) {
+        if (_isolateInfos.containsKey(path)) {
           throw new ArgumentError.value(path, 'path', 'path already in use!');
         }
       }
@@ -66,35 +67,37 @@ class IsolateCluster {
       // create receive port for the bootstrap response
       var receivePortBootstrap = new ReceivePort();
 
+      // create a container for isolate object
+      var isolateInfo = new _IsolateInfo();
+      _isolateInfos[path] = isolateInfo;
+
       // create a port to receive messages from the isolate
-      var receivePort = new ReceivePort();
+      isolateInfo.receivePort = new ReceivePort();
 
       // spawn the isolate and wait for it
-      var isolate = await Isolate.spawn(
+      isolateInfo.isolate = await Isolate.spawn(
           _bootstrapIsolate,
           new _BootstrapIsolateMsg(receivePortBootstrap.sendPort,
-              receivePort.sendPort, entryPoint, path, properties));
+              isolateInfo.receivePort.sendPort, entryPoint, path, properties));
 
       // wait for the first message from the spawned isolate
       var isolateSpawnedMsg =
       await receivePortBootstrap.first;
 
       // create and store a reference to the spawned isolate
-      var newRef = new IsolateRef._internal(
-          isolate, isolateSpawnedMsg.sendPort, path, properties);
-      _isolateRefs[path] = newRef;
+      isolateInfo.isolateRef = new IsolateRef._internal(isolateSpawnedMsg.sendPort, path, properties);
 
-      // store the receiver and start listening to messages from the isolate
-      _receivePorts[newRef._path] = receivePort;
-      receivePort.listen((msg) => _onIsolateMessage(newRef, msg));
+      // start listening to messages from the isolate
+      isolateInfo.receivePort.listen((msg) => _onIsolateMessage(isolateInfo.isolateRef, msg));
 
       // send isolate up msg to all already existing isolates
-      _isolateRefs.values
-          .where((ref) => ref != newRef)
-          .forEach((ref) => ref._sendPort.send(new _IsolateUpMsg(newRef)));
+      _isolateInfos.values
+          .map((i) => i.isolateRef)
+          .where((ref) => ref != isolateInfo.isolateRef)
+          .forEach((ref) => ref._sendPort.send(new _IsolateUpMsg(isolateInfo.isolateRef)));
 
       // complete the future returned by the parent function.
-      completer.complete(newRef);
+      completer.complete(isolateInfo.isolateRef);
     });
 
     // we added a function to the queue. schedule queue processing.
@@ -135,7 +138,7 @@ class IsolateCluster {
     }
 
     // send a shutdown request to all isolates
-    _isolateRefs.values.forEach(
+    _isolateInfos.values.map((i) => i.isolateRef).forEach(
         (ref) => ref._sendPort.send(_IsolateShutdownRequestMsg.INSTANCE));
 
     var completer = new Completer<bool>();
@@ -143,11 +146,11 @@ class IsolateCluster {
     var sw = new Stopwatch()
       ..start();
     var shutdownCompleteWatcher = (Timer timer) {
-      if (_receivePorts.isEmpty) {
+      if (_isolateInfos.isEmpty) {
         timer.cancel();
         completer.complete(true);
       } else if (sw.elapsed >= timeout) {
-        new List.from(_isolateRefs.values).forEach((ref) => _killIsolate(ref));
+        new List.from(_isolateInfos.values.map((i) => i.isolateRef).toSet()).forEach((ref) => _killIsolate(ref));
         timer.cancel();
         completer.complete(false);
       }
@@ -159,16 +162,21 @@ class IsolateCluster {
 
   _onIsolateMessage(IsolateRef ref, var msg) {
     if (msg is _IsolateReadyForShutdownMsg) {
-      _killIsolate(ref);
+      _killIsolate(_isolateInfos[ref.path]);
     } else if (msg is _NodeShutdownRequestMsg) {
       shutdown(timeout: (msg as _NodeShutdownRequestMsg).duration);
     }
   }
 
-  _killIsolate(IsolateRef ref) {
-    ref._isolate.kill();
-    _isolateRefs.remove(ref._path);
-    ReceivePort receivePort = _receivePorts.remove(ref._path);
-    receivePort.close();
+  _killIsolate(_IsolateInfo isolate) {
+    isolate.isolate.kill();
+    isolate.receivePort.close();
+    _isolateInfos.remove(isolate.isolateRef._path);
   }
+}
+
+class _IsolateInfo {
+  Isolate isolate;
+  ReceivePort receivePort;
+  IsolateRef isolateRef;
 }
