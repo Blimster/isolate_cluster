@@ -87,7 +87,7 @@ class IsolateRef {
  */
 class IsolateContext {
 
-  final Map<Uri, Completer<IsolateRef>> _pendingLookUps = {};
+  final Map<int, Completer<IsolateRef>> _pendingCompleters = {};
   final Map<Uri, IsolateRef> _isolateRefs = {};
   final SendPort _sendPort;
   final ReceivePort _receivePort;
@@ -95,6 +95,7 @@ class IsolateContext {
   final Map<String, dynamic> _properties;
   final StreamController<Message> _payloadStreamController = new StreamController();
   final StreamController<IsolateRef> _isolateUpStreamController = new StreamController();
+  int nextCompleterRef = 0;
   ShutdownRequestListener _shutdownRequestListener;
 
 
@@ -130,6 +131,24 @@ class IsolateContext {
       _shutdownRequestListener = listener;
 
   /**
+   * Spawns a new isolate in the cluster this node belongs to. The provided
+   * [EntryPoint] is called after the isolate is spawned. The entry point is
+   * executed in spawned isolate.
+   *
+   * You can provide some [properties] optionally.
+   *
+   * This method returns a future which completes with an reference to the isolate.
+   */
+  Future<IsolateRef> spawnIsolate(Uri path, EntryPoint entryPoint,
+      [Map<String, dynamic> properties]) async {
+    nextCompleterRef++;
+    _sendPort.send(new _IsolateSpawnMsg(nextCompleterRef, path, entryPoint, properties));
+    var completer = new Completer<IsolateRef>();
+    _pendingCompleters[nextCompleterRef] = completer;
+    return completer.future;
+  }
+
+  /**
    * Looks up an isolate by its path. The returned future completes with a [IsolateRef], if an isolate with the given
    * path is present in this cluster. If no isolate is found, the future completes with [null].
    */
@@ -141,9 +160,10 @@ class IsolateContext {
     if (isolateRef != null) {
       return new Future.value(isolateRef);
     }
-    _sendPort.send(new _IsolateLookUpMsg(path));
+    nextCompleterRef++;
+    _sendPort.send(new _IsolateLookUpMsg(nextCompleterRef, path));
     var completer = new Completer<IsolateRef>();
-    _pendingLookUps[path] = completer;
+    _pendingCompleters[nextCompleterRef] = completer;
     return completer.future;
   }
 
@@ -165,24 +185,29 @@ class IsolateContext {
 
   _processMessage(var msg) {
     if (msg is _PayloadMsg) {
-      _PayloadMsg payloadMsg = (msg as _PayloadMsg);
       _payloadStreamController.add(new Message._internal(
-          payloadMsg.sender, payloadMsg.replyTo, payloadMsg.payload));
+          msg.sender, msg.replyTo, msg.payload));
     } else if (msg is _IsolateUpMsg) {
-      var isolateUpMsg = (msg as _IsolateUpMsg);
-      _isolateUpStreamController.add(isolateUpMsg.isolateRef);
+      _isolateUpStreamController.add(msg.isolateRef);
     } else if (msg is _IsolateShutdownRequestMsg) {
       if (_shutdownRequestListener != null) {
         _shutdownRequestListener();
       } else {
-        _sendPort.send(_IsolateReadyForShutdownMsg.INSTANCE);
+        shutdownIsolate();
+      }
+    } else if (msg is _IsolateSpawnedMsg) {
+      var completer = _pendingCompleters.remove(msg.correlationId);
+      if(msg.error != null) {
+        completer.completeError(msg.error);
+      } else {
+        _isolateRefs[msg.isolateRef.path] = msg.isolateRef;
+        completer.complete(msg.isolateRef);
       }
     } else if (msg is _IsolateLookedUpMsg) {
-      _IsolateLookedUpMsg isolateLookedUpMsg = (msg as _IsolateLookedUpMsg);
-      if (isolateLookedUpMsg.isolateRef != null) {
-        _isolateRefs[isolateLookedUpMsg.path] = isolateLookedUpMsg.isolateRef;
-        var completer = _pendingLookUps.remove(isolateLookedUpMsg.path);
-        completer.complete(isolateLookedUpMsg.isolateRef);
+      if (msg.isolateRef != null) {
+        _isolateRefs[msg.path] = msg.isolateRef;
+        var completer = _pendingCompleters.remove(msg.correlationId);
+        completer.complete(msg.isolateRef);
       }
     }
   }

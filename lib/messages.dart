@@ -25,17 +25,36 @@ class _PayloadMsg {
   const _PayloadMsg(this.sender, this.replyTo, this.payload);
 }
 
+class _IsolateSpawnMsg {
+  final dynamic correlationId;
+  final Uri path;
+  final EntryPoint entryPoint;
+  final Map<String, dynamic> properties;
+
+  const _IsolateSpawnMsg(this.correlationId, this.path, this.entryPoint, this.properties);
+}
+
+class _IsolateSpawnedMsg {
+  final dynamic correlationId;
+  final IsolateRef isolateRef;
+  final dynamic error;
+
+  const _IsolateSpawnedMsg(this.correlationId, this.isolateRef, this.error);
+}
+
 class _IsolateLookUpMsg {
+  final dynamic correlationId;
   final Uri path;
 
-  const _IsolateLookUpMsg(this.path);
+  const _IsolateLookUpMsg(this.correlationId, this.path);
 }
 
 class _IsolateLookedUpMsg {
+  final dynamic correlationId;
   final Uri path;
   final IsolateRef isolateRef;
 
-  const _IsolateLookedUpMsg(this.path, this.isolateRef);
+  const _IsolateLookedUpMsg(this.correlationId, this.path, this.isolateRef);
 }
 
 class _IsolateUpMsg {

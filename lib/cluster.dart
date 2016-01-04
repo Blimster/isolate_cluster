@@ -7,13 +7,16 @@ part of isolate_cluster;
 class IsolateCluster {
 
   Map<Uri, _IsolateInfo> _isolateInfos = {};
-  Queue<Function> _spawnQueue = new Queue();
-  bool _spawning = false;
+  Queue<Function> _taskQueue = new Queue();
+  bool _queueing = false;
+  bool _up = false;
 
   /**
    * Creates the node for a single-node cluster. After the is constructed, the the cluster is up and usable.
    */
-  IsolateCluster.singleNode();
+  IsolateCluster.singleNode() {
+    _up = true;
+  }
 
   /**
    * Spawns a new isolate in the cluster this node belongs to. The provided
@@ -45,8 +48,11 @@ class IsolateCluster {
     // this method returns a future that completes to an isolate ref. the completer helps to create that future.
     Completer<IsolateRef> completer = new Completer();
 
-    // add the function that spawns the isolate to a queue. the functions in the queue are executed one by one.
-    _spawnQueue.addLast(() async {
+    // create the function that spawns the isolate.
+    var spawnFunction = () async {
+      if (!_up) {
+        throw new StateError("node is down!");
+      }
       if (path.pathSegments.last.isEmpty) {
         // path ends with a slash(/). add an segment to the path, so the path is
         // unique
@@ -67,7 +73,6 @@ class IsolateCluster {
 
       // create a container for isolate object
       var isolateInfo = new _IsolateInfo();
-      _isolateInfos[path] = isolateInfo;
 
       // create a port to receive messages from the isolate
       isolateInfo.receivePort = new ReceivePort();
@@ -79,8 +84,7 @@ class IsolateCluster {
               isolateInfo.receivePort.sendPort, entryPoint, path, properties));
 
       // wait for the first message from the spawned isolate
-      var isolateSpawnedMsg =
-      await receivePortBootstrap.first;
+      var isolateSpawnedMsg = await receivePortBootstrap.first;
 
       // create and store a reference to the spawned isolate
       isolateInfo.isolateRef = new IsolateRef._internal(isolateSpawnedMsg.sendPort, path, properties);
@@ -94,27 +98,15 @@ class IsolateCluster {
           .where((ref) => ref != isolateInfo.isolateRef)
           .forEach((ref) => ref._sendPort.send(new _IsolateUpMsg(isolateInfo.isolateRef)));
 
+      // store isolate info
+      _isolateInfos[path] = isolateInfo;
+
       // complete the future returned by the parent function.
       completer.complete(isolateInfo.isolateRef);
-    });
+    };
 
-    // we added a function to the queue. schedule queue processing.
-    new Future(() async {
-      // ensure that the queue processing is started only once.
-      if (!_spawning) {
-        _spawning = true;
-        try {
-          // as long as there are functions in the queue...
-          while (_spawnQueue.isNotEmpty) {
-            // remove the function, execute it and wait until it is completed.
-            var spawnFunction = _spawnQueue.removeFirst();
-            await spawnFunction();
-          }
-        } finally {
-          _spawning = false;
-        }
-      }
-    });
+    // add the spawn function to the queue and start processing the queue.
+    _processQueue(spawnFunction);
 
     // return a future that completes with the isolate ref created by the spawn function above.
     return completer.future;
@@ -125,7 +117,7 @@ class IsolateCluster {
    * path is present in this cluster. If no isolate is found, the future completes with [null].
    */
   Future<IsolateRef> lookupIsolate(Uri path) async {
-    return new Future.value(_isolateInfos[path].isolateRef);
+    return new Future.value(_isolateInfos[path]?.isolateRef);
   }
 
   /**
@@ -138,6 +130,9 @@ class IsolateCluster {
    * In both cases, when the future is completed, all isolates of this node are killed.
    */
   Future<bool> shutdown({Duration timeout}) {
+    // node is no longer up
+    _up = false;
+
     // set default timeout if not provided
     if (timeout == null) {
       timeout = new Duration(seconds: 5);
@@ -152,11 +147,12 @@ class IsolateCluster {
     var sw = new Stopwatch()
       ..start();
     var shutdownCompleteWatcher = (Timer timer) {
+      print(_isolateInfos);
       if (_isolateInfos.isEmpty) {
         timer.cancel();
         completer.complete(true);
       } else if (sw.elapsed >= timeout) {
-        new List.from(_isolateInfos.values.map((i) => i.isolateRef).toSet()).forEach((ref) => _killIsolate(ref));
+        _isolateInfos.values.toList().forEach((info) => _killIsolate(info));
         timer.cancel();
         completer.complete(false);
       }
@@ -166,14 +162,22 @@ class IsolateCluster {
     return completer.future;
   }
 
-  _onIsolateMessage(IsolateRef ref, var msg) {
+  _onIsolateMessage(IsolateRef ref, var msg) async {
     if (msg is _IsolateReadyForShutdownMsg) {
       _killIsolate(_isolateInfos[ref.path]);
     } else if (msg is _NodeShutdownRequestMsg) {
       shutdown(timeout: (msg as _NodeShutdownRequestMsg).duration);
+    } else if (msg is _IsolateSpawnMsg) {
+      try {
+        var spawnedIsolate = await spawnIsolate(msg.path, msg.entryPoint, msg.properties);
+        ref._sendPort.send(new _IsolateSpawnedMsg(msg.correlationId, spawnedIsolate, null));
+      } catch (error) {
+        ref._sendPort.send(new _IsolateSpawnedMsg(msg.correlationId, null, error));
+      }
     } else if (msg is _IsolateLookUpMsg) {
-      Uri path = (msg as _IsolateLookUpMsg).path;
-      ref._sendPort.send(new _IsolateLookedUpMsg(path, _isolateInfos[path].isolateRef));
+      var isolateLookUpMsg = (msg as _IsolateLookUpMsg);
+      ref._sendPort.send(new _IsolateLookedUpMsg(
+          isolateLookUpMsg.correlationId, isolateLookUpMsg.path, _isolateInfos[isolateLookUpMsg.path].isolateRef));
     }
   }
 
@@ -181,6 +185,28 @@ class IsolateCluster {
     isolate.isolate.kill();
     isolate.receivePort.close();
     _isolateInfos.remove(isolate.isolateRef._path);
+  }
+
+  _processQueue([Function newTask]) {
+    if (newTask != null) {
+      _taskQueue.addLast(newTask);
+    }
+    new Future(() async {
+      // ensure that the queue processing is started only once.
+      if (!_queueing) {
+        _queueing = true;
+        try {
+          // as long as there are functions in the queue...
+          while (_taskQueue.isNotEmpty) {
+            // remove the function, execute it and wait until it is completed.
+            var spawnFunction = _taskQueue.removeFirst();
+            await spawnFunction();
+          }
+        } finally {
+          _queueing = false;
+        }
+      }
+    });
   }
 
 }
