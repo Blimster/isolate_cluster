@@ -1,12 +1,16 @@
-# Version 0.x.x
+# Version 0.4.0
 
+- BREAKING CHANGE: Very isolate now has a path
+- Isolates can be looked up by path
+- Isolates can spawn and look up other isolates
 - Added documentation comments to all parts of the public API.
-- ...
+- Added logging
+- Fixed a couple of bugs
 
 # Version 0.3.0
 
 - A cluster can now be stopped by calling IsolateCluster.shutdown()
-- Fixed type in change log (again).
+- Fixed typo in change log (again).
 
 # Version 0.2.1
 
@@ -14,7 +18,7 @@
 
 # Version 0.2.0
 
-- **Breaking Change:** Newly spawned isolates no longer receive IsolateUp events for isolates that are already part of the cluster. 
+- BREAKING CHANGE: Newly spawned isolates no longer receive IsolateUp events for isolates that are already part of the cluster.
 
 # Version 0.1.0
 
