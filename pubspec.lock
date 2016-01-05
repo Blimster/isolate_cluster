@@ -5,6 +5,10 @@ packages:
     description: crypto
     source: hosted
     version: "0.9.1"
+  logging:
+    description: logging
+    source: hosted
+    version: "0.11.2"
   uuid:
     description: uuid
     source: hosted

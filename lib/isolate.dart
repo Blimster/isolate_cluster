@@ -65,6 +65,7 @@ class IsolateRef {
    * Sends a [message] to the isolate represented by this reference.
    */
   send(String message, {IsolateRef replyTo}) {
+    _isolateRefLog.fine('[${_localIsolateRef}][send] message=$message, replyTo=$replyTo');
     _sendPort.send(new _PayloadMsg(_localIsolateRef, replyTo ?? _localIsolateRef, message));
   }
 
@@ -86,6 +87,8 @@ class IsolateRef {
  * isolate.
  */
 class IsolateContext {
+
+  Logger log = new Logger('net.blimster.isolatecluster.IsolateContext');
 
   final Map<int, Completer<IsolateRef>> _pendingCompleters = {};
   final Map<Uri, IsolateRef> _isolateRefs = {};
@@ -141,6 +144,7 @@ class IsolateContext {
    */
   Future<IsolateRef> spawnIsolate(Uri path, EntryPoint entryPoint,
       [Map<String, dynamic> properties]) async {
+    log.fine('[${_localIsolateRef}][spawnIsolate] path=$path, properties=$properties');
     nextCompleterRef++;
     _sendPort.send(new _IsolateSpawnMsg(nextCompleterRef, path, entryPoint, properties));
     var completer = new Completer<IsolateRef>();
@@ -153,6 +157,7 @@ class IsolateContext {
    * path is present in this cluster. If no isolate is found, the future completes with [null].
    */
   Future<IsolateRef> lookupIsolate(Uri path) async {
+    log.fine('[${_localIsolateRef}][lookupIsolate] path=$path');
     if(path == null) {
       return new Future.value(null);
     }
@@ -171,6 +176,7 @@ class IsolateContext {
    * Shuts down the isolate this context is bound to.
    */
   shutdownIsolate() {
+    log.fine('[${_localIsolateRef}][shutdownIsolate]');
     _payloadStreamController.close();
     _isolateUpStreamController.close();
     _sendPort.send(_IsolateReadyForShutdownMsg.INSTANCE);
@@ -180,10 +186,12 @@ class IsolateContext {
    * Shuts down the node of the isolate this context is bound to.
    */
   shutdownNode({Duration timeout}) {
+    log.fine('[${_localIsolateRef}][shutdownNode] timeout=$timeout');
     _sendPort.send(new _NodeShutdownRequestMsg(timeout));
   }
 
   _processMessage(var msg) {
+    log.fine('[${_localIsolateRef}][_processMessage] msg=$msg');
     if (msg is _PayloadMsg) {
       _payloadStreamController.add(new Message._internal(
           msg.sender, msg.replyTo, msg.payload));
@@ -244,3 +252,6 @@ IsolateRef _localIsolateRef;
 
 // isolate context for the local isolate
 IsolateContext _context;
+
+// logger for IsolateRef (it is not part of the class, because the class is sent to other isolates)
+Logger _isolateRefLog = new Logger('net.blimster.isolatecluster.IsolateRef');

@@ -6,6 +6,8 @@ part of isolate_cluster;
  */
 class IsolateCluster {
 
+  Logger log = new Logger('net.blimster.isolatecluster.IsolateCluster');
+
   Map<Uri, _IsolateInfo> _isolateInfos = {};
   Queue<Function> _taskQueue = new Queue();
   bool _queueing = false;
@@ -15,6 +17,7 @@ class IsolateCluster {
    * Creates the node for a single-node cluster. After the is constructed, the the cluster is up and usable.
    */
   IsolateCluster.singleNode() {
+    log.fine('[singleNode]');
     _up = true;
   }
 
@@ -29,6 +32,8 @@ class IsolateCluster {
    */
   Future<IsolateRef> spawnIsolate(Uri path, EntryPoint entryPoint,
       [Map<String, dynamic> properties]) async {
+    log.fine('[spawnIsolate] path=$path, properties=$properties ');
+
     // create a copy of the provided map or an empty one, if the caller do not provide properties
     if (properties != null) {
       properties = new Map.from(properties);
@@ -90,7 +95,7 @@ class IsolateCluster {
       isolateInfo.isolateRef = new IsolateRef._internal(isolateSpawnedMsg.sendPort, path, properties);
 
       // start listening to messages from the isolate
-      isolateInfo.receivePort.listen((msg) => _onIsolateMessage(isolateInfo.isolateRef, msg));
+      isolateInfo.receivePort.listen((msg) => _processMessage(isolateInfo.isolateRef, msg));
 
       // send isolate up msg to all already existing isolates
       _isolateInfos.values
@@ -117,6 +122,7 @@ class IsolateCluster {
    * path is present in this cluster. If no isolate is found, the future completes with [null].
    */
   Future<IsolateRef> lookupIsolate(Uri path) async {
+    log.fine('[lookupIsolate] path=$path');
     return new Future.value(_isolateInfos[path]?.isolateRef);
   }
 
@@ -130,6 +136,12 @@ class IsolateCluster {
    * In both cases, when the future is completed, all isolates of this node are killed.
    */
   Future<bool> shutdown({Duration timeout}) {
+    log.fine('[shutdown] timeout=$timeout');
+
+    if(!_up) {
+      throw new StateError("node is down!");
+    }
+
     // node is no longer up
     _up = false;
 
@@ -147,7 +159,6 @@ class IsolateCluster {
     var sw = new Stopwatch()
       ..start();
     var shutdownCompleteWatcher = (Timer timer) {
-      print(_isolateInfos);
       if (_isolateInfos.isEmpty) {
         timer.cancel();
         completer.complete(true);
@@ -162,7 +173,8 @@ class IsolateCluster {
     return completer.future;
   }
 
-  _onIsolateMessage(IsolateRef ref, var msg) async {
+  _processMessage(IsolateRef ref, var msg) async {
+    log.fine('[_processMessage] ref=$ref, msg=$msg');
     if (msg is _IsolateReadyForShutdownMsg) {
       _killIsolate(_isolateInfos[ref.path]);
     } else if (msg is _NodeShutdownRequestMsg) {
@@ -182,12 +194,14 @@ class IsolateCluster {
   }
 
   _killIsolate(_IsolateInfo isolate) {
+    log.fine('[_killIsolate] isolate=$isolate');
     isolate.isolate.kill();
     isolate.receivePort.close();
     _isolateInfos.remove(isolate.isolateRef._path);
   }
 
   _processQueue([Function newTask]) {
+    log.fine('[_processQueue] newTask=$newTask');
     if (newTask != null) {
       _taskQueue.addLast(newTask);
     }
@@ -199,8 +213,8 @@ class IsolateCluster {
           // as long as there are functions in the queue...
           while (_taskQueue.isNotEmpty) {
             // remove the function, execute it and wait until it is completed.
-            var spawnFunction = _taskQueue.removeFirst();
-            await spawnFunction();
+            var taskFunction = _taskQueue.removeFirst();
+            await taskFunction();
           }
         } finally {
           _queueing = false;
@@ -212,7 +226,11 @@ class IsolateCluster {
 }
 
 class _IsolateInfo {
+
   Isolate isolate;
   ReceivePort receivePort;
   IsolateRef isolateRef;
+
+  String toString() => '[_IsolateInfo: isolate=$isolate, receivePort=$receivePort, isolateRef=$isolateRef]';
+
 }

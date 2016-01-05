@@ -5,5 +5,5 @@ author: Oliver Damm <oliver.damm@gmx.de>
 homepage: http://www.github.com/blimster/isolate_cluster
 dependencies:
   uuid: 0.5.0
-
+  logging: 0.11.2
 
