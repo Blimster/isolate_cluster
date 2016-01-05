@@ -6,10 +6,9 @@ part of isolate_cluster;
  */
 class IsolateCluster {
 
-  Logger log = new Logger('net.blimster.isolatecluster.IsolateCluster');
-
-  Map<Uri, _IsolateInfo> _isolateInfos = {};
-  Queue<Function> _taskQueue = new Queue();
+  final Logger _log = new Logger('net.blimster.isolatecluster.IsolateCluster');
+  final Map<Uri, _IsolateInfo> _isolateInfos = {};
+  final Queue<Function> _taskQueue = new Queue();
   bool _queueing = false;
   bool _up = false;
 
@@ -17,7 +16,7 @@ class IsolateCluster {
    * Creates the node for a single-node cluster. After the is constructed, the the cluster is up and usable.
    */
   IsolateCluster.singleNode() {
-    log.fine('[singleNode]');
+    _log.fine('[singleNode]');
     _up = true;
   }
 
@@ -30,9 +29,8 @@ class IsolateCluster {
    *
    * This method returns a future which completes with an reference to the isolate.
    */
-  Future<IsolateRef> spawnIsolate(Uri path, EntryPoint entryPoint,
-      [Map<String, dynamic> properties]) async {
-    log.fine('[spawnIsolate] path=$path, properties=$properties ');
+  Future<IsolateRef> spawnIsolate(Uri path, EntryPoint entryPoint, [Map<String, dynamic> properties]) async {
+    _log.fine('[spawnIsolate] path=$path, properties=$properties ');
 
     // create a copy of the provided map or an empty one, if the caller do not provide properties
     if (properties != null) {
@@ -46,8 +44,7 @@ class IsolateCluster {
       throw new ArgumentError.notNull('path');
     }
     if (!path.hasAbsolutePath) {
-      throw new ArgumentError.value(
-          path.hasAbsolutePath, 'path.hasAbsolutePath');
+      throw new ArgumentError.value(path.hasAbsolutePath, 'path.hasAbsolutePath');
     }
 
     // this method returns a future that completes to an isolate ref. the completer helps to create that future.
@@ -85,8 +82,12 @@ class IsolateCluster {
       // spawn the isolate and wait for it
       isolateInfo.isolate = await Isolate.spawn(
           _bootstrapIsolate,
-          new _BootstrapIsolateMsg(receivePortBootstrap.sendPort,
-              isolateInfo.receivePort.sendPort, entryPoint, path, properties));
+          new _BootstrapIsolateMsg(
+              receivePortBootstrap.sendPort,
+              isolateInfo.receivePort.sendPort,
+              entryPoint,
+              path,
+              properties));
 
       // wait for the first message from the spawned isolate
       var isolateSpawnedMsg = await receivePortBootstrap.first;
@@ -122,7 +123,7 @@ class IsolateCluster {
    * path is present in this cluster. If no isolate is found, the future completes with [null].
    */
   Future<IsolateRef> lookupIsolate(Uri path) async {
-    log.fine('[lookupIsolate] path=$path');
+    _log.fine('[lookupIsolate] path=$path');
     return new Future.value(_isolateInfos[path]?.isolateRef);
   }
 
@@ -136,9 +137,9 @@ class IsolateCluster {
    * In both cases, when the future is completed, all isolates of this node are killed.
    */
   Future<bool> shutdown({Duration timeout}) {
-    log.fine('[shutdown] timeout=$timeout');
+    _log.fine('[shutdown] timeout=$timeout');
 
-    if(!_up) {
+    if (!_up) {
       throw new StateError("node is down!");
     }
 
@@ -151,8 +152,9 @@ class IsolateCluster {
     }
 
     // send a shutdown request to all isolates
-    _isolateInfos.values.map((i) => i.isolateRef).forEach(
-        (ref) => ref._sendPort.send(_IsolateShutdownRequestMsg.INSTANCE));
+    _isolateInfos.values
+        .map((i) => i.isolateRef)
+        .forEach((ref) => ref._sendPort.send(_IsolateShutdownRequestMsg.INSTANCE));
 
     var completer = new Completer<bool>();
 
@@ -174,7 +176,7 @@ class IsolateCluster {
   }
 
   _processMessage(IsolateRef ref, var msg) async {
-    log.fine('[_processMessage] ref=$ref, msg=$msg');
+    _log.fine('[_processMessage] ref=$ref, msg=$msg');
     if (msg is _IsolateReadyForShutdownMsg) {
       _killIsolate(_isolateInfos[ref.path]);
     } else if (msg is _NodeShutdownRequestMsg) {
@@ -188,20 +190,23 @@ class IsolateCluster {
       }
     } else if (msg is _IsolateLookUpMsg) {
       var isolateLookUpMsg = (msg as _IsolateLookUpMsg);
-      ref._sendPort.send(new _IsolateLookedUpMsg(
-          isolateLookUpMsg.correlationId, isolateLookUpMsg.path, _isolateInfos[isolateLookUpMsg.path].isolateRef));
+      ref._sendPort.send(
+          new _IsolateLookedUpMsg(
+              isolateLookUpMsg.correlationId,
+              isolateLookUpMsg.path,
+              _isolateInfos[isolateLookUpMsg.path].isolateRef));
     }
   }
 
   _killIsolate(_IsolateInfo isolate) {
-    log.fine('[_killIsolate] isolate=$isolate');
+    _log.fine('[_killIsolate] isolate=$isolate');
     isolate.isolate.kill();
     isolate.receivePort.close();
     _isolateInfos.remove(isolate.isolateRef._path);
   }
 
   _processQueue([Function newTask]) {
-    log.fine('[_processQueue] newTask=$newTask');
+    _log.fine('[_processQueue] newTask=$newTask');
     if (newTask != null) {
       _taskQueue.addLast(newTask);
     }

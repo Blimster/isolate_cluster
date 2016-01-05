@@ -38,8 +38,7 @@ class Message {
   String get content => _content;
 
   String toString() {
-    return '[Message][sender=${_sender?.path}, replyTo=${_replyTo
-        ?.path}, content=$_content]';
+    return '[Message][sender=${_sender?.path}, replyTo=${_replyTo?.path}, content=$_content]';
   }
 
 }
@@ -53,8 +52,7 @@ class IsolateRef {
   final Uri _path;
   final Map<String, dynamic> _properties;
 
-  IsolateRef._internal(this._sendPort, this._path,
-      this._properties);
+  IsolateRef._internal(this._sendPort, this._path, this._properties);
 
   /**
    * Returns the path of the isolate represented by this reference.
@@ -88,8 +86,7 @@ class IsolateRef {
  */
 class IsolateContext {
 
-  Logger log = new Logger('net.blimster.isolatecluster.IsolateContext');
-
+  final Logger _log = new Logger('net.blimster.isolatecluster.IsolateContext');
   final Map<int, Completer<IsolateRef>> _pendingCompleters = {};
   final Map<Uri, IsolateRef> _isolateRefs = {};
   final SendPort _sendPort;
@@ -102,8 +99,7 @@ class IsolateContext {
   ShutdownRequestListener _shutdownRequestListener;
 
 
-  IsolateContext._internal(this._sendPort, this._receivePort, this._path,
-      this._properties) {
+  IsolateContext._internal(this._sendPort, this._receivePort, this._path, this._properties) {
     _receivePort.listen((msg) => _processMessage(msg));
   }
 
@@ -130,8 +126,7 @@ class IsolateContext {
   /**
    * The [ShutdownRequestListener] is called, when the isolate this context is bound to, receives a shutdown request.
    */
-  set shutdownRequestListener(ShutdownRequestListener listener) =>
-      _shutdownRequestListener = listener;
+  set shutdownRequestListener(ShutdownRequestListener listener) => _shutdownRequestListener = listener;
 
   /**
    * Spawns a new isolate in the cluster this node belongs to. The provided
@@ -142,9 +137,8 @@ class IsolateContext {
    *
    * This method returns a future which completes with an reference to the isolate.
    */
-  Future<IsolateRef> spawnIsolate(Uri path, EntryPoint entryPoint,
-      [Map<String, dynamic> properties]) async {
-    log.fine('[${_localIsolateRef}][spawnIsolate] path=$path, properties=$properties');
+  Future<IsolateRef> spawnIsolate(Uri path, EntryPoint entryPoint, [Map<String, dynamic> properties]) async {
+    _log.fine('[${_localIsolateRef}][spawnIsolate] path=$path, properties=$properties');
     nextCompleterRef++;
     _sendPort.send(new _IsolateSpawnMsg(nextCompleterRef, path, entryPoint, properties));
     var completer = new Completer<IsolateRef>();
@@ -157,8 +151,8 @@ class IsolateContext {
    * path is present in this cluster. If no isolate is found, the future completes with [null].
    */
   Future<IsolateRef> lookupIsolate(Uri path) async {
-    log.fine('[${_localIsolateRef}][lookupIsolate] path=$path');
-    if(path == null) {
+    _log.fine('[${_localIsolateRef}][lookupIsolate] path=$path');
+    if (path == null) {
       return new Future.value(null);
     }
     var isolateRef = _isolateRefs[path];
@@ -176,7 +170,7 @@ class IsolateContext {
    * Shuts down the isolate this context is bound to.
    */
   shutdownIsolate() {
-    log.fine('[${_localIsolateRef}][shutdownIsolate]');
+    _log.fine('[${_localIsolateRef}][shutdownIsolate]');
     _payloadStreamController.close();
     _isolateUpStreamController.close();
     _sendPort.send(_IsolateReadyForShutdownMsg.INSTANCE);
@@ -186,12 +180,12 @@ class IsolateContext {
    * Shuts down the node of the isolate this context is bound to.
    */
   shutdownNode({Duration timeout}) {
-    log.fine('[${_localIsolateRef}][shutdownNode] timeout=$timeout');
+    _log.fine('[${_localIsolateRef}][shutdownNode] timeout=$timeout');
     _sendPort.send(new _NodeShutdownRequestMsg(timeout));
   }
 
   _processMessage(var msg) {
-    log.fine('[${_localIsolateRef}][_processMessage] msg=$msg');
+    _log.fine('[${_localIsolateRef}][_processMessage] msg=$msg');
     if (msg is _PayloadMsg) {
       _payloadStreamController.add(new Message._internal(
           msg.sender, msg.replyTo, msg.payload));
@@ -205,7 +199,7 @@ class IsolateContext {
       }
     } else if (msg is _IsolateSpawnedMsg) {
       var completer = _pendingCompleters.remove(msg.correlationId);
-      if(msg.error != null) {
+      if (msg.error != null) {
         completer.completeError(msg.error);
       } else {
         _isolateRefs[msg.isolateRef.path] = msg.isolateRef;
@@ -220,9 +214,7 @@ class IsolateContext {
     }
   }
 
-  String toString() {
-    return _path.toString();
-  }
+  String toString() => _path.toString();
 
 }
 
@@ -236,14 +228,15 @@ _bootstrapIsolate(_BootstrapIsolateMsg msg) {
   var receivePort = new ReceivePort();
 
   // initialize the local isolate ref
-  _localIsolateRef = new IsolateRef._internal(
-      receivePort.sendPort, msg.path, msg.properties);
+  _localIsolateRef = new IsolateRef._internal(receivePort.sendPort, msg.path, msg.properties);
 
   // create the context and store it local to this isolate
-  _context = new IsolateContext._internal(
-      msg.sendPortPayload, receivePort, msg.path, msg.properties);
+  _context = new IsolateContext._internal(msg.sendPortPayload, receivePort, msg.path, msg.properties);
 
+  // send the send port of this isolate to the node
   msg.sendPortBootstrap.send(new _IsolateBootstrappedMsg(receivePort.sendPort));
+
+  // call entry point
   msg.entryPoint();
 }
 
