@@ -53,7 +53,8 @@ class IsolateCluster {
     // create the function that spawns the isolate.
     var spawnFunction = () async {
       if (!_up) {
-        throw new StateError("node is down!");
+        completer.completeError(new StateError("node is down!"));
+        return;
       }
       if (path.pathSegments.last.isEmpty) {
         // path ends with a slash(/). add an segment to the path, so the path is
@@ -66,7 +67,8 @@ class IsolateCluster {
       } else {
         // path does not end with a slash (/). is the path already in use?
         if (_isolateInfos.containsKey(path)) {
-          throw new ArgumentError.value(path, 'path', 'path already in use!');
+          completer.completeError(new ArgumentError.value(path?.path, 'path', 'path already in use!'));
+          return;
         }
       }
 
