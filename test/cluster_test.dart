@@ -22,6 +22,12 @@ main() {
     expect(isolateRef.property('key'), equals('value'));
   });
 
+  test('it is not allowed to spawn more than 1 isolate with the same path', () async {
+    IsolateRef isolateRef = await isolateCluster.spawnIsolate(new Uri(path: '/foo'), entryPoint);
+    expect(isolateRef.path.path, equals('/foo'));
+    expect(isolateCluster.spawnIsolate(new Uri(path: '/foo'), entryPoint), throwsArgumentError);
+  });
+
   test('if the provided path ends with a /, spawnIsolate() adds 1 segment to the path to make the path unique', () async {
     IsolateRef isolateRef1 = await isolateCluster.spawnIsolate(new Uri(path: '/foo/'), entryPoint);
     IsolateRef isolateRef2 = await isolateCluster.spawnIsolate(new Uri(path: '/foo/'), entryPoint);
