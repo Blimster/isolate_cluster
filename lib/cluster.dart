@@ -20,6 +20,8 @@ class IsolateCluster {
     _up = true;
   }
 
+  get up => _up;
+
   /**
    * Spawns a new isolate in the cluster this node belongs to. The provided
    * [EntryPoint] is called after the isolate is spawned. The entry point is
@@ -126,6 +128,9 @@ class IsolateCluster {
    */
   Future<IsolateRef> lookupIsolate(Uri path) async {
     _log.fine('[lookupIsolate] path=$path');
+    if(!_up) {
+      throw new StateError('node is down!');
+    }
     return new Future.value(_isolateInfos[path]?.isolateRef);
   }
 
@@ -142,7 +147,7 @@ class IsolateCluster {
     _log.fine('[shutdown] timeout=$timeout');
 
     if (!_up) {
-      throw new StateError("node is down!");
+      throw new StateError("node is already down!");
     }
 
     // node is no longer up
