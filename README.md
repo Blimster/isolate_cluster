@@ -12,10 +12,10 @@ Here is a quick overview of the feature implemented so far:
 import 'package:isolate_cluster/isolate_cluster.dart';
 
 main() async {
-  // create a single node cluster (the only type of cluster currently supported).
+  // create a single node cluster (the only type currently supported).
   var cluster = new IsolateCluster.singleNode();
 
-  // spawn 3 isolates. you have to provide a top-level function that accepts an IsolateContext. optionally, properties
+  // spawn 3 isolates. you have to provide a top-level function. optionally, properties
   // can be provided. the properties can be accessed from the IsolateContext and the IsolateRef.
   cluster.spawnIsolate(new Uri(path: '/sender/1'), sender, {'msg': 'foo'});
   cluster.spawnIsolate(new Uri(path: '/sender/2'), sender, {'msg': 'bar'});
@@ -29,7 +29,7 @@ main() async {
   receiverRef.send('foo bar');
 }
 
-// The entry point for the receiver isolate
+// the entry point for the receiver isolate
 receiver() {
   print('[$context] receiver started');
 
