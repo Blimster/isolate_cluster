@@ -30,10 +30,11 @@ class _PayloadMsg {
   final IsolateRef sender;
   final IsolateRef replyTo;
   final String payload;
+  final String type;
 
-  const _PayloadMsg(this.sender, this.replyTo, this.payload);
+  const _PayloadMsg(this.sender, this.replyTo, this.payload, this.type);
 
-  String toString() => '[_PayloadMsg: sender=$sender, replyTo=$replyTo, payload=$payload]';
+  String toString() => '[_PayloadMsg: sender=$sender, replyTo=$replyTo, payload=$payload, type=$type]';
 
 }
 

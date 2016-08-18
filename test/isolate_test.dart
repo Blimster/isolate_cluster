@@ -22,7 +22,7 @@ main() {
   test('IsolateRef.send() sends a message to the isolate reference', () async {
     var messages = awaitMessagesInTest(1);
     IsolateRef isolateRef = await isolateCluster.spawnIsolate(new Uri(path: '/foo'), entrypoint);
-    isolateRef.send('message');
+    isolateRef.send('message', type: 'type');
     expect(messages, completion(orderedEquals(['null,null,message'])));
   });
 
@@ -36,22 +36,22 @@ main() {
 }
 
 entrypoint() {
-  context.onMessage.listen((msg) async => sendMessageToTest('${msg.sender},${msg.replyTo},${msg.content}'));
+  isolateContext.onMessage.listen((msg) async => sendMessageToTest('${msg.sender},${msg.replyTo},${msg.content}'));
 }
 
 sender() async {
-  context.onMessage.listen((msg) => sendMessageToTest(msg.content));
-  IsolateRef replyTo = await context.lookupIsolate(new Uri(path: '/replyTo'));
-  IsolateRef receiver = await context.lookupIsolate(new Uri(path: '/receiver'));
+  isolateContext.onMessage.listen((msg) => sendMessageToTest(msg.content));
+  IsolateRef replyTo = await isolateContext.lookupIsolate(new Uri(path: '/replyTo'));
+  IsolateRef receiver = await isolateContext.lookupIsolate(new Uri(path: '/receiver'));
   receiver.send('message', replyTo: replyTo);
 }
 
 replyTo() async {
-  context.onMessage.listen((msg) => sendMessageToTest(msg.content));
+  isolateContext.onMessage.listen((msg) => sendMessageToTest(msg.content));
 }
 
 receiver() async {
-  context.onMessage.listen((msg) {
+  isolateContext.onMessage.listen((msg) {
     msg.replyTo.send('replyTo:${msg.content}');
     msg.replyTo.send('sender:${msg.content}');
   });

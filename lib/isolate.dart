@@ -12,15 +12,16 @@ typedef EntryPoint();
 typedef ShutdownRequestListener();
 
 /**
- * A message sent to an isolate containing the [sender], [replyTo] and the [content].
+ * A message sent to an isolate containing the [sender], [replyTo], [content] and the [type].
  */
 class Message {
 
   final IsolateRef _sender;
   final IsolateRef _replyTo;
   final String _content;
+  final String _type;
 
-  const Message._internal(this._sender, this._replyTo, this._content);
+  const Message._internal(this._sender, this._replyTo, this._content, this._type);
 
   /**
    * Returns an isolate ref to the the sender of this messages.
@@ -37,8 +38,13 @@ class Message {
    */
   String get content => _content;
 
+  /**
+   * Returns the type of content of this message.
+   */
+  String get type => _type;
+
   String toString() {
-    return '[Message][sender=${_sender?.path}, replyTo=${_replyTo?.path}, content=$_content]';
+    return '[Message][sender=${_sender?.path}, replyTo=${_replyTo?.path}, content=$_content, type=$_type]';
   }
 
 }
@@ -62,9 +68,9 @@ class IsolateRef {
   /**
    * Sends a [message] to the isolate represented by this reference.
    */
-  send(String message, {IsolateRef replyTo}) {
-    _isolateRefLog.fine('[${_localIsolateRef}][send] message=$message, replyTo=$replyTo');
-    _sendPort.send(new _PayloadMsg(_localIsolateRef, replyTo ?? _localIsolateRef, message));
+  send(String message, {String type, IsolateRef replyTo}) {
+    _isolateRefLog.fine('[${_localIsolateRef}][send] message=$message, type=$type, replyTo=$replyTo');
+    _sendPort.send(new _PayloadMsg(_localIsolateRef, replyTo ?? _localIsolateRef, message, type));
   }
 
   /**
@@ -188,7 +194,7 @@ class IsolateContext {
     _log.fine('[${_localIsolateRef}][_processMessage] msg=$msg');
     if (msg is _PayloadMsg) {
       _payloadStreamController.add(new Message._internal(
-          msg.sender, msg.replyTo, msg.payload));
+          msg.sender, msg.replyTo, msg.payload, msg.type));
     } else if (msg is _IsolateUpMsg) {
       _isolateUpStreamController.add(msg.isolateRef);
     } else if (msg is _IsolateShutdownRequestMsg) {
@@ -221,7 +227,7 @@ class IsolateContext {
 /**
  * Getter for the local [IsolateContext].
  */
-IsolateContext get context => _context;
+IsolateContext get isolateContext => _context;
 
 // this function is called after the new isolate is spawned
 _bootstrapIsolate(_BootstrapIsolateMsg msg) {

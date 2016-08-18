@@ -1,3 +1,8 @@
+# Version 0.5.0
+
+- BREAKING CHANGE: Renamed content to isolateContext
+- A message to an isolate can now have a type
+
 # Version 0.4.0
 
 - BREAKING CHANGE: Very isolate now has a path
