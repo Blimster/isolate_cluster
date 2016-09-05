@@ -24,7 +24,7 @@ main() async {
 }
 
 // the entry point for the receiver isolate
-receiver() {
+receiver(IsolateContext isolateContext) {
   print('[$isolateContext] receiver started');
 
   // counter for received messages
@@ -67,7 +67,7 @@ receiver() {
   };
 }
 
-sender() {
+sender(IsolateContext isolateContext) {
   print('[${isolateContext}] sender started');
 
   // listen to replies from receiver
@@ -81,7 +81,7 @@ sender() {
       .listen((ref) => ref.send(isolateContext.property('msg')));
 }
 
-spawned() {
+spawned(IsolateContext isolateContext) {
   print('[$isolateContext] spawned started');
   isolateContext.onMessage
       .listen((msg) => print('[$isolateContext] message received: $msg'));

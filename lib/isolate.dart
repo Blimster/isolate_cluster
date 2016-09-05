@@ -3,7 +3,7 @@ part of isolate_cluster;
 /**
  * The entry point for an isolate spawned by IsolateCluster.
  */
-typedef EntryPoint();
+typedef EntryPoint(IsolateContext);
 
 /**
  * A listener to a request for shutdown an isolate. Such a listener should release resource acquired by the isolate
@@ -274,11 +274,6 @@ class IsolateContext {
   String toString() => _path.toString();
 }
 
-/**
- * Getter for the local [IsolateContext].
- */
-IsolateContext get isolateContext => _context;
-
 // this function is called after the new isolate is spawned
 _bootstrapIsolate(_IsolateBootstrapMsg msg) {
   var receivePort = new ReceivePort();
@@ -296,7 +291,7 @@ _bootstrapIsolate(_IsolateBootstrapMsg msg) {
       .send(new _IsolateBootstrappedMsg(receivePort.sendPort).toMap());
 
   // call entry point
-  msg.entryPoint();
+  msg.entryPoint(_context);
 }
 
 /**

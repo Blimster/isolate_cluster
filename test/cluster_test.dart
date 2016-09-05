@@ -62,5 +62,5 @@ main() {
 
 }
 
-entryPoint() {
+entryPoint(IsolateContext isolateContext) {
 }

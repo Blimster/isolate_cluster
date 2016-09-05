@@ -35,22 +35,22 @@ main() {
   });
 }
 
-entrypoint() {
+entrypoint(IsolateContext isolateContext) {
   isolateContext.onMessage.listen((msg) async => sendMessageToTest('${msg.sender},${msg.replyTo},${msg.content}'));
 }
 
-sender() async {
+sender(IsolateContext isolateContext) async {
   isolateContext.onMessage.listen((msg) => sendMessageToTest(msg.content));
   IsolateRef replyTo = await isolateContext.lookupIsolate(new Uri(path: '/replyTo'));
   IsolateRef receiver = await isolateContext.lookupIsolate(new Uri(path: '/receiver'));
   receiver.send('message', replyTo: replyTo);
 }
 
-replyTo() async {
+replyTo(IsolateContext isolateContext) async {
   isolateContext.onMessage.listen((msg) => sendMessageToTest(msg.content));
 }
 
-receiver() async {
+receiver(IsolateContext isolateContext) async {
   isolateContext.onMessage.listen((msg) {
     msg.replyTo.send('replyTo:${msg.content}');
     msg.replyTo.send('sender:${msg.content}');

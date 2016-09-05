@@ -1,5 +1,7 @@
 import 'package:isolate_cluster/isolate_cluster.dart';
 
+IsolateContext _context;
+
 /**
  * When an isolate is spawned using an URI, the script located by the 
  * give URI has to provide a function main(args). The args parameter
@@ -11,6 +13,7 @@ main(args) {
   bootstrapIsolate(args, init);
 }
 
-init() {
-  print('[$isolateContext] spawned!');
+init(IsolateContext context) {
+  _context = context;
+  print('[$context] spawned!');
 }
