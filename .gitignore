@@ -1,5 +1,4 @@
 .packages
-packages
 .pub/
 pubspec.lock
-
+.vscode

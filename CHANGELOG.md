@@ -1,3 +1,8 @@
+# Version 0.6.0
+
+- It is now possible to spawn an isolate by an URI.
+- All messages are now valid to be sent over a SendPort.
+
 # Version 0.5.0
 
 - BREAKING CHANGE: Renamed content to isolateContext
