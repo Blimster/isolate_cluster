@@ -20,7 +20,7 @@ main() async {
   print('[main] looked up isolate: $lookedUp');
 
   // send a message to the isolate using the IsolateRef.
-  receiverRef.send('foo bar', type: 'string');
+  receiverRef.send('foo bar', type: 'string', correlationId: 'abc');
 }
 
 // the entry point for the receiver isolate

@@ -1,3 +1,7 @@
+# Version 0.7.0
+
+- A message to an isolate can now have a correlationId. 
+
 # Version 0.6.0
 
 - BREAKING CHANGE: The getter isolateContext was not able to provide a valid context in all situations. Instead, the context is now a parameter of the EntryPoint function. 

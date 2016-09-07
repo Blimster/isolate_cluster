@@ -19,9 +19,10 @@ class Message {
   final IsolateRef _replyTo;
   final String _content;
   final String _type;
+  final String _correlationId;
 
   const Message._internal(
-      this._sender, this._replyTo, this._content, this._type);
+      this._sender, this._replyTo, this._content, this._type, this._correlationId);
 
   /**
    * Returns an isolate ref to the the sender of this messages.
@@ -43,8 +44,13 @@ class Message {
    */
   String get type => _type;
 
+  /**
+   * Returns the correlationId of this message.
+   */
+  String get correlationId => _correlationId;
+
   String toString() {
-    return '[Message][sender=${_sender?.path}, replyTo=${_replyTo?.path}, content=$_content, type=$_type]';
+    return '[Message][sender=${_sender?.path}, replyTo=${_replyTo?.path}, content=$_content, type=$_type, correlationId=$correlationId]';
   }
 }
 
@@ -80,11 +86,11 @@ class IsolateRef {
   /**
    * Sends a [message] to the isolate represented by this reference.
    */
-  send(String message, {String type, IsolateRef replyTo}) {
+  send(String message, {String type, String correlationId, IsolateRef replyTo}) {
     _isolateRefLog.fine(
-        '[${_localIsolateRef}][send] message=$message, type=$type, replyTo=$replyTo');
+        '[${_localIsolateRef}][send] message=$message, type=$type, correlationId=$correlationId, replyTo=$replyTo');
     _sendPort.send(new _PayloadMsg(
-            _localIsolateRef, replyTo ?? _localIsolateRef, message, type)
+            _localIsolateRef, replyTo ?? _localIsolateRef, message, type, correlationId)
         .toMap());
   }
 
@@ -230,7 +236,7 @@ class IsolateContext {
         case _PAYLOAD_MSG:
           final _PayloadMsg payloadMsg = new _PayloadMsg.fromMap(map);
           _payloadStreamController.add(new Message._internal(payloadMsg.sender,
-              payloadMsg.replyTo, payloadMsg.payload, payloadMsg.type));
+              payloadMsg.replyTo, payloadMsg.payload, payloadMsg.type, payloadMsg.correlationId));
           break;
         case _ISOLATE_UP_MSG:
           final _IsolateUpMsg isolateUpMsg = new _IsolateUpMsg.fromMap(map);
