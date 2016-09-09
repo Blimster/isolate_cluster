@@ -5,7 +5,7 @@ part of isolate_cluster;
  * cluster will be able to communicate with each other using the provided API.
  */
 class IsolateCluster {
-  final Logger _log = new Logger('net.blimster.isolatecluster.IsolateCluster');
+  final Logger _log = new Logger('isolate_cluster.cluster');
   final Map<Uri, _IsolateInfo> _isolateInfos = {};
   final Queue<Function> _taskQueue = new Queue();
   bool _queueing = false;

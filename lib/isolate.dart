@@ -111,7 +111,7 @@ class IsolateRef {
  * isolate.
  */
 class IsolateContext {
-  final Logger _log = new Logger('net.blimster.isolatecluster.IsolateContext');
+  final Logger _log = new Logger('isolate_cluster.context');
   final Map<int, Completer<IsolateRef>> _pendingCompleters = {};
   final Map<Uri, IsolateRef> _isolateRefs = {};
   final SendPort _sendPort;
@@ -317,4 +317,4 @@ IsolateRef _localIsolateRef;
 IsolateContext _context;
 
 // logger for IsolateRef (it is not part of the class, because the class is sent to other isolates)
-Logger _isolateRefLog = new Logger('net.blimster.isolatecluster.IsolateRef');
+Logger _isolateRefLog = new Logger('isolate_cluster.ref');

@@ -1,3 +1,7 @@
+# Version 0.8.0
+
+- BREAKING CHANGE: Changed logger names to shorter. 
+
 # Version 0.7.0
 
 - A message to an isolate can now have a correlationId. 
