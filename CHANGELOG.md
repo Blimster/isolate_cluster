@@ -1,3 +1,7 @@
+# Version 0.9.0
+
+- Bugfix: Fixed broken argument check in lookupISolates()
+
 # Version 0.8.0
 
 - BREAKING CHANGE: Changed logger names to shorter.
