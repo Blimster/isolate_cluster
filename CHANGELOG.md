@@ -1,3 +1,7 @@
+# Version 0.10.0
+
+-
+
 # Version 0.9.0
 
 - Bugfix: Fixed broken argument check in lookupISolates()
