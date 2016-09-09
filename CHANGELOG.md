@@ -1,6 +1,7 @@
 # Version 0.8.0
 
-- BREAKING CHANGE: Changed logger names to shorter. 
+- BREAKING CHANGE: Changed logger names to shorter.
+- Added lookupIsolates() to look up all isolates of a given path.
 
 # Version 0.7.0
 

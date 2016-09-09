@@ -21,8 +21,7 @@ class Message {
   final String _type;
   final String _correlationId;
 
-  const Message._internal(
-      this._sender, this._replyTo, this._content, this._type, this._correlationId);
+  const Message._internal(this._sender, this._replyTo, this._content, this._type, this._correlationId);
 
   /**
    * Returns an isolate ref to the the sender of this messages.
@@ -71,11 +70,7 @@ class IsolateRef {
   }
 
   Map<String, dynamic> _toMap() {
-    return {
-      _SEND_PORT: _sendPort,
-      _PATH: _path?.toString(),
-      _PROPERTIES: _properties
-    };
+    return {_SEND_PORT: _sendPort, _PATH: _path?.toString(), _PROPERTIES: _properties};
   }
 
   /**
@@ -89,9 +84,8 @@ class IsolateRef {
   send(String message, {String type, String correlationId, IsolateRef replyTo}) {
     _isolateRefLog.fine(
         '[${_localIsolateRef}][send] message=$message, type=$type, correlationId=$correlationId, replyTo=$replyTo');
-    _sendPort.send(new _PayloadMsg(
-            _localIsolateRef, replyTo ?? _localIsolateRef, message, type, correlationId)
-        .toMap());
+    _sendPort
+        .send(new _PayloadMsg(_localIsolateRef, replyTo ?? _localIsolateRef, message, type, correlationId).toMap());
   }
 
   /**
@@ -118,15 +112,12 @@ class IsolateContext {
   final ReceivePort _receivePort;
   final Uri _path;
   final Map<String, dynamic> _properties;
-  final StreamController<Message> _payloadStreamController =
-      new StreamController();
-  final StreamController<IsolateRef> _isolateUpStreamController =
-      new StreamController();
+  final StreamController<Message> _payloadStreamController = new StreamController();
+  final StreamController<IsolateRef> _isolateUpStreamController = new StreamController();
   int _nextCompleterRef = 0;
   ShutdownRequestListener _shutdownRequestListener;
 
-  IsolateContext._internal(
-      this._sendPort, this._receivePort, this._path, this._properties) {
+  IsolateContext._internal(this._sendPort, this._receivePort, this._path, this._properties) {
     _receivePort.listen((msg) => _processMessage(msg));
   }
 
@@ -153,8 +144,7 @@ class IsolateContext {
   /**
    * The [ShutdownRequestListener] is called, when the isolate this context is bound to, receives a shutdown request.
    */
-  set shutdownRequestListener(ShutdownRequestListener listener) =>
-      _shutdownRequestListener = listener;
+  set shutdownRequestListener(ShutdownRequestListener listener) => _shutdownRequestListener = listener;
 
   /**
    * Spawns a new isolate in the cluster this node belongs to. The provided
@@ -172,38 +162,65 @@ class IsolateContext {
    *
    * This method returns a future which completes with an reference to the isolate.
    */
-  Future<IsolateRef> spawnIsolate(Uri path, dynamic entryPointOrUri,
-      [Map<String, dynamic> properties]) async {
-    _log.fine(
-        '[${_localIsolateRef}][spawnIsolate] path=$path, endPointOrUri=$entryPointOrUri, properties=$properties');
+  Future<IsolateRef> spawnIsolate(Uri path, dynamic entryPointOrUri, [Map<String, dynamic> properties]) async {
+    _log.fine('[${_localIsolateRef}][spawnIsolate] path=$path, endPointOrUri=$entryPointOrUri, properties=$properties');
     _nextCompleterRef++;
-    _sendPort.send(new _IsolateSpawnMsg(
-            _nextCompleterRef,
-            path,
-            entryPointOrUri is EntryPoint ? entryPointOrUri : null,
-            entryPointOrUri is Uri ? entryPointOrUri : null,
-            properties)
+    _sendPort.send(new _IsolateSpawnMsg(_nextCompleterRef, path, entryPointOrUri is EntryPoint ? entryPointOrUri : null,
+            entryPointOrUri is Uri ? entryPointOrUri : null, properties)
         .toMap());
     final completer = new Completer<IsolateRef>();
     _pendingCompleters[_nextCompleterRef] = completer;
     return completer.future;
   }
 
-  /**
-   * Looks up an isolate by its path. The returned future completes with a [IsolateRef], if an isolate with the given
-   * path is present in this cluster. If no isolate is found, the future completes with [null].
-   */
+  /// Looks up an isolate by its path.
+  ///
+  /// The returned future completes with a [IsolateRef], if an isolate with the given path is present in this cluster.
+  /// If no isolate is found, the future completes with [null].
+  ///
+  /// The given [path] must end with a slash (/).
+  ///
   Future<IsolateRef> lookupIsolate(Uri path) async {
     _log.fine('[${_localIsolateRef}][lookupIsolate] path=$path');
     if (path == null) {
-      return new Future.value(null);
+      throw new ArgumentError('parameter [path] must not be null!');
     }
+
+    // maybe we already now the isolate
     var isolateRef = _isolateRefs[path];
     if (isolateRef != null) {
       return new Future.value(isolateRef);
     }
+
+    // the isolate is not know, forward the request to the cluster
     _nextCompleterRef++;
-    _sendPort.send(new _IsolateLookUpMsg(_nextCompleterRef, path).toMap());
+    _sendPort.send(new _IsolateLookUpMsg(_nextCompleterRef, true, path).toMap());
+    var completer = new Completer<IsolateRef>();
+    _pendingCompleters[_nextCompleterRef] = completer;
+    return completer.future;
+  }
+
+  /// Looks up one or more isolates by its path.
+  ///
+  /// The returned furutre complets with a [List] of [IsolateRef], if any isolate beneath the given path is present in
+  /// this cluster. If no isolate is fopund, the future completes with an empty [List].
+  ///
+  /// The given [path] has to end with a slash (/).
+  ///
+  Future<List<IsolateRef>> lookupIsolates(Uri path) async {
+    _log.fine('[${_localIsolateRef}][lookupIsolates] path=$path');
+    if (path == null) {
+      throw new ArgumentError('parameter [path] must not be null!');
+    }
+    if(path.isAbsolute) {
+      throw new ArgumentError('parameter [path] must be a relative uri!');
+    }
+    if(!path.pathSegments.last.isEmpty) {
+      throw new ArgumentError('parameter [path] must end with a slash (/)!');
+    }
+
+    _nextCompleterRef++;
+    _sendPort.send(new _IsolateLookUpMsg(_nextCompleterRef, false, path).toMap());
     var completer = new Completer<IsolateRef>();
     _pendingCompleters[_nextCompleterRef] = completer;
     return completer.future;
@@ -235,8 +252,8 @@ class IsolateContext {
       switch (type) {
         case _PAYLOAD_MSG:
           final _PayloadMsg payloadMsg = new _PayloadMsg.fromMap(map);
-          _payloadStreamController.add(new Message._internal(payloadMsg.sender,
-              payloadMsg.replyTo, payloadMsg.payload, payloadMsg.type, payloadMsg.correlationId));
+          _payloadStreamController.add(new Message._internal(
+              payloadMsg.sender, payloadMsg.replyTo, payloadMsg.payload, payloadMsg.type, payloadMsg.correlationId));
           break;
         case _ISOLATE_UP_MSG:
           final _IsolateUpMsg isolateUpMsg = new _IsolateUpMsg.fromMap(map);
@@ -250,27 +267,25 @@ class IsolateContext {
           }
           break;
         case _ISOLATE_SPAWNED_MSG:
-          final _IsolateSpawnedMsg isolateSpawnedMsg =
-              new _IsolateSpawnedMsg.fromMap(map);
-          final completer =
-              _pendingCompleters.remove(isolateSpawnedMsg.correlationId);
+          final _IsolateSpawnedMsg isolateSpawnedMsg = new _IsolateSpawnedMsg.fromMap(map);
+          final completer = _pendingCompleters.remove(isolateSpawnedMsg.correlationId);
           if (isolateSpawnedMsg.error != null) {
             completer.completeError(isolateSpawnedMsg.error);
           } else {
-            _isolateRefs[isolateSpawnedMsg.isolateRef.path] =
-                isolateSpawnedMsg.isolateRef;
+            _isolateRefs[isolateSpawnedMsg.isolateRef.path] = isolateSpawnedMsg.isolateRef;
             completer.complete(isolateSpawnedMsg.isolateRef);
           }
           break;
         case _ISOLATE_LOOKED_UP_MSG:
-          final _IsolateLookedUpMsg isolateLookedUpMsg =
-              new _IsolateLookedUpMsg.fromMap(map);
-          if (isolateLookedUpMsg.isolateRef != null) {
-            _isolateRefs[isolateLookedUpMsg.path] =
-                isolateLookedUpMsg.isolateRef;
-            final completer =
-                _pendingCompleters.remove(isolateLookedUpMsg.correlationId);
-            completer.complete(isolateLookedUpMsg.isolateRef);
+          final _IsolateLookedUpMsg isolateLookedUpMsg = new _IsolateLookedUpMsg.fromMap(map);
+          if (isolateLookedUpMsg.isolateRefs != null) {
+            isolateLookedUpMsg.isolateRefs.forEach((ref) => _isolateRefs[ref._path] = ref);
+            final completer = _pendingCompleters.remove(isolateLookedUpMsg.correlationId);
+            if (isolateLookedUpMsg.singleIsolate) {
+              completer.complete(isolateLookedUpMsg.isolateRefs.first);
+            } else {
+              completer.complete(isolateLookedUpMsg.isolateRefs);
+            }
           }
           break;
       }
@@ -285,16 +300,13 @@ _bootstrapIsolate(_IsolateBootstrapMsg msg) {
   var receivePort = new ReceivePort();
 
   // initialize the local isolate ref
-  _localIsolateRef =
-      new IsolateRef._internal(receivePort.sendPort, msg.path, msg.properties);
+  _localIsolateRef = new IsolateRef._internal(receivePort.sendPort, msg.path, msg.properties);
 
   // create the context and store it local to this isolate
-  _context = new IsolateContext._internal(
-      msg.sendPortPayload, receivePort, msg.path, msg.properties);
+  _context = new IsolateContext._internal(msg.sendPortPayload, receivePort, msg.path, msg.properties);
 
   // send the send port of this isolate to the node
-  msg.sendPortBootstrap
-      .send(new _IsolateBootstrappedMsg(receivePort.sendPort).toMap());
+  msg.sendPortBootstrap.send(new _IsolateBootstrappedMsg(receivePort.sendPort).toMap());
 
   // call entry point
   msg.entryPoint(_context);
@@ -305,8 +317,7 @@ _bootstrapIsolate(_IsolateBootstrapMsg msg) {
  * if the isolate is spawned using an uri.
  */
 bootstrapIsolate(List args, EntryPoint entryPoint) {
-  final bootstrapMsg =
-      new _IsolateBootstrapMsg(args[0], args[1], entryPoint, args[2], args[3]);
+  final bootstrapMsg = new _IsolateBootstrapMsg(args[0], args[1], entryPoint, args[2], args[3]);
   _bootstrapIsolate(bootstrapMsg);
 }
 

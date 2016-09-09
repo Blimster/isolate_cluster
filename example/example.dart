@@ -12,6 +12,7 @@ main() async {
   // can be provided. the properties can be accessed from the IsolateContext and the IsolateRef.
   cluster.spawnIsolate(new Uri(path: '/sender/1'), sender, {'msg': 'foo'});
   cluster.spawnIsolate(new Uri(path: '/sender/2'), sender, {'msg': 'bar'});
+
   IsolateRef receiverRef = await cluster
       .spawnIsolate(new Uri(path: '/receiver'), receiver, {'type': 'receiver'});
 

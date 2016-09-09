@@ -25,9 +25,11 @@ const _REPLY_TO = 'replyTo';
 const _PAYLOAD = 'payload';
 const _TYPE = 'type';
 const _ISOLATE_REF = 'isolateRef';
+const _ISOLATE_REFS = 'isolateRefs';
 const _ERROR = 'error';
 const _DURATION = 'duration';
 const _URI = 'uri';
+const _SINGLE_ISOLATE = 'singleIsolate';
 
 class _IsolateBootstrapMsg {
   final SendPort sendPortBootstrap;
@@ -36,8 +38,7 @@ class _IsolateBootstrapMsg {
   final EntryPoint entryPoint;
   final Map<String, dynamic> properties;
 
-  _IsolateBootstrapMsg(this.sendPortBootstrap, this.sendPortPayload,
-      this.entryPoint, this.path, this.properties);
+  _IsolateBootstrapMsg(this.sendPortBootstrap, this.sendPortPayload, this.entryPoint, this.path, this.properties);
 
   _IsolateBootstrapMsg.fromMap(Map<String, dynamic> map)
       : sendPortBootstrap = map[_SEND_PORT_BOOTSTRAP],
@@ -57,8 +58,7 @@ class _IsolateBootstrapMsg {
     };
   }
 
-  String toString() =>
-      '[_BootstrapIsolateMsg: path=$path, entryPoint=$entryPoint, properties=$properties]';
+  String toString() => '[_BootstrapIsolateMsg: path=$path, entryPoint=$entryPoint, properties=$properties]';
 }
 
 class _IsolateBootstrappedMsg {
@@ -66,8 +66,7 @@ class _IsolateBootstrappedMsg {
 
   _IsolateBootstrappedMsg(this.sendPort);
 
-  _IsolateBootstrappedMsg.fromMap(Map<String, dynamic> map)
-      : sendPort = map[_SEND_PORT];
+  _IsolateBootstrappedMsg.fromMap(Map<String, dynamic> map) : sendPort = map[_SEND_PORT];
 
   Map<String, dynamic> toMap() {
     return {_MSG_TYPE: _ISOLATE_BOOTSTRAPPED_MSG, _SEND_PORT: sendPort};
@@ -83,15 +82,11 @@ class _PayloadMsg {
   final String type;
   final String correlationId;
 
-  _PayloadMsg(
-      this.sender, this.replyTo, this.payload, this.type, this.correlationId);
+  _PayloadMsg(this.sender, this.replyTo, this.payload, this.type, this.correlationId);
 
   _PayloadMsg.fromMap(Map<String, dynamic> map)
-      : sender =
-            map[_SENDER] != null ? new IsolateRef._fromMap(map[_SENDER]) : null,
-        replyTo = map[_REPLY_TO] != null
-            ? new IsolateRef._fromMap(map[_REPLY_TO])
-            : null,
+      : sender = map[_SENDER] != null ? new IsolateRef._fromMap(map[_SENDER]) : null,
+        replyTo = map[_REPLY_TO] != null ? new IsolateRef._fromMap(map[_REPLY_TO]) : null,
         payload = map[_PAYLOAD],
         type = map[_TYPE],
         correlationId = map[_CORRELATION_ID];
@@ -118,8 +113,7 @@ class _IsolateSpawnMsg {
   final Uri uri;
   final Map<String, dynamic> properties;
 
-  _IsolateSpawnMsg(this.correlationId, this.path, this.entryPoint, this.uri,
-      this.properties);
+  _IsolateSpawnMsg(this.correlationId, this.path, this.entryPoint, this.uri, this.properties);
 
   _IsolateSpawnMsg.fromMap(Map<String, dynamic> map)
       : correlationId = map[_CORRELATION_ID],
@@ -152,9 +146,7 @@ class _IsolateSpawnedMsg {
 
   _IsolateSpawnedMsg.fromMap(Map<String, dynamic> map)
       : correlationId = map[_CORRELATION_ID],
-        isolateRef = map[_ISOLATE_REF] != null
-            ? new IsolateRef._fromMap(map[_ISOLATE_REF])
-            : null,
+        isolateRef = map[_ISOLATE_REF] != null ? new IsolateRef._fromMap(map[_ISOLATE_REF]) : null,
         error = map[_ERROR];
 
   Map<String, dynamic> toMap() {
@@ -166,57 +158,57 @@ class _IsolateSpawnedMsg {
     };
   }
 
-  String toString() =>
-      '[_IsolateSpawnedMsg: correlationId=$correlationId, isolateRef=$isolateRef, error=$error]';
+  String toString() => '[_IsolateSpawnedMsg: correlationId=$correlationId, isolateRef=$isolateRef, error=$error]';
 }
 
 class _IsolateLookUpMsg {
   final int correlationId;
+  final bool singleIsolate;
   final Uri path;
 
-  _IsolateLookUpMsg(this.correlationId, this.path);
+  _IsolateLookUpMsg(this.correlationId, this.singleIsolate, this.path);
 
   _IsolateLookUpMsg.fromMap(Map<String, dynamic> map)
       : correlationId = map[_CORRELATION_ID],
+        singleIsolate = map[_SINGLE_ISOLATE],
         path = Uri.parse(map[_PATH]);
 
   Map<String, dynamic> toMap() {
     return {
-      _MSG_TYPE: _ISOLATE_LOOK_UP_MSG,
+      _MSG_TYPE: _ISOLATE_LOOK_UP_MSG, 
       _CORRELATION_ID: correlationId,
-      _PATH: path?.toString()
-    };
+      _SINGLE_ISOLATE: singleIsolate, 
+      _PATH: path?.toString()};
   }
 
-  String toString() =>
-      '[_IsolateLookUpMsg: correlationId=$correlationId, path=$path]';
+  String toString() => '[_IsolateLookUpMsg: correlationId=$correlationId, path=$path]';
 }
 
 class _IsolateLookedUpMsg {
   final int correlationId;
+  final bool singleIsolate;
   final Uri path;
-  final IsolateRef isolateRef;
+  final List<IsolateRef> isolateRefs;
 
-  _IsolateLookedUpMsg(this.correlationId, this.path, this.isolateRef);
+  _IsolateLookedUpMsg(this.correlationId, this.singleIsolate, this.path, this.isolateRefs);
 
   _IsolateLookedUpMsg.fromMap(Map<String, dynamic> map)
       : correlationId = map[_CORRELATION_ID],
+        singleIsolate = map[_SINGLE_ISOLATE],
         path = Uri.parse(map[_PATH]),
-        isolateRef = map[_ISOLATE_REF] != null
-            ? new IsolateRef._fromMap(map[_ISOLATE_REF])
-            : null;
+        isolateRefs = map[_ISOLATE_REFS].map((refAsMap) => new IsolateRef._fromMap(refAsMap)).toList();
 
   Map<String, dynamic> toMap() {
     return {
       _MSG_TYPE: _ISOLATE_LOOKED_UP_MSG,
       _CORRELATION_ID: correlationId,
+      _SINGLE_ISOLATE: singleIsolate,
       _PATH: path?.toString(),
-      _ISOLATE_REF: isolateRef?._toMap()
+      _ISOLATE_REFS: isolateRefs.map((ref) => ref._toMap()).toList()
     };
   }
 
-  String toString() =>
-      '[_IsolateLookedUpMsg: correlationId=$correlationId, path=$path, isolateRef=$isolateRef]';
+  String toString() => '[_IsolateLookedUpMsg: correlationId=$correlationId, path=$path, isolateRefs=$isolateRefs]';
 }
 
 class _IsolateUpMsg {
@@ -225,9 +217,7 @@ class _IsolateUpMsg {
   _IsolateUpMsg(this.isolateRef);
 
   _IsolateUpMsg.fromMap(Map<String, dynamic> map)
-      : isolateRef = map[_ISOLATE_REF] != null
-            ? new IsolateRef._fromMap(map[_ISOLATE_REF])
-            : null;
+      : isolateRef = map[_ISOLATE_REF] != null ? new IsolateRef._fromMap(map[_ISOLATE_REF]) : null;
 
   Map<String, dynamic> toMap() {
     return {_MSG_TYPE: _ISOLATE_UP_MSG, _ISOLATE_REF: isolateRef._toMap()};
@@ -237,8 +227,7 @@ class _IsolateUpMsg {
 }
 
 class _IsolateShutdownRequestMsg {
-  static const _IsolateShutdownRequestMsg INSTANCE =
-      const _IsolateShutdownRequestMsg();
+  static const _IsolateShutdownRequestMsg INSTANCE = const _IsolateShutdownRequestMsg();
 
   const _IsolateShutdownRequestMsg();
 
@@ -250,8 +239,7 @@ class _IsolateShutdownRequestMsg {
 }
 
 class _IsolateReadyForShutdownMsg {
-  static const _IsolateReadyForShutdownMsg INSTANCE =
-      const _IsolateReadyForShutdownMsg();
+  static const _IsolateReadyForShutdownMsg INSTANCE = const _IsolateReadyForShutdownMsg();
 
   const _IsolateReadyForShutdownMsg();
 
@@ -268,15 +256,10 @@ class _NodeShutdownRequestMsg {
   _NodeShutdownRequestMsg(this.duration);
 
   _NodeShutdownRequestMsg.fromMap(Map<String, dynamic> map)
-      : duration = map[_DURATION] != null
-            ? new Duration(milliseconds: map[_DURATION])
-            : null;
+      : duration = map[_DURATION] != null ? new Duration(milliseconds: map[_DURATION]) : null;
 
   Map<String, dynamic> toMap() {
-    return {
-      _MSG_TYPE: _NODE_SHUTDOWN_REQUEST_MSG,
-      _DURATION: duration?.inMilliseconds
-    };
+    return {_MSG_TYPE: _NODE_SHUTDOWN_REQUEST_MSG, _DURATION: duration?.inMilliseconds};
   }
 
   String toString() => '[_NodeShutdownRequestMsg: duration=$duration]';
