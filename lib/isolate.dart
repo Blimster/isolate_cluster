@@ -212,8 +212,8 @@ class IsolateContext {
     if (path == null) {
       throw new ArgumentError('parameter [path] must not be null!');
     }
-    if(path.isAbsolute) {
-      throw new ArgumentError('parameter [path] must be a relative uri!');
+    if(!path.hasAbsolutePath) {
+      throw new ArgumentError('parameter [path] must be an absolute uri!');
     }
     if(!path.pathSegments.last.isEmpty) {
       throw new ArgumentError('parameter [path] must end with a slash (/)!');

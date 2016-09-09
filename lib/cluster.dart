@@ -52,7 +52,7 @@ class IsolateCluster {
       throw new ArgumentError.notNull('path');
     }
     if (!path.hasAbsolutePath) {
-      throw new ArgumentError.value(path.hasAbsolutePath, 'path.hasAbsolutePath');
+      throw new ArgumentError('parameter [path] must be an absolte uri!');
     }
 
     // this method returns a future that completes to an isolate ref. the completer helps to create that future.
@@ -164,8 +164,8 @@ class IsolateCluster {
     if (path == null) {
       throw new ArgumentError('parameter [path] not set!');
     }
-    if (path.isAbsolute) {
-      throw new ArgumentError('parameter [path] must a relative uri!');
+    if (!path.hasAbsolutePath) {
+      throw new ArgumentError('parameter [path] must be an absolte uri!');
     }
     if (!path.pathSegments.last.isEmpty) {
       throw new ArgumentError('parameter [path] must end with a slash (/)!');
