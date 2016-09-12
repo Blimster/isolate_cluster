@@ -4,11 +4,11 @@
 
 # Version 0.9.0
 
-- Bugfix: Fixed broken argument check in lookupISolates()
+- Bugfix: Fixed broken argument check in lookupIsolates()
 
 # Version 0.8.0
 
-- BREAKING CHANGE: Changed logger names to shorter.
+- BREAKING CHANGE: Changed logger names to be shorter.
 - Added lookupIsolates() to look up all isolates of a given path.
 
 # Version 0.7.0
