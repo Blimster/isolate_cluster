@@ -35,7 +35,8 @@ class IsolateCluster {
    *
    * You can provide some [properties] optionally.
    *
-   * This method returns a future which completes with an reference to the isolate.
+   * This method returns a future which completes with an reference to the isolate. The future completes 
+   * when the new isolate is spawned, but the [EntryPoint] of the new isolate may not be completely executed. 
    */
   Future<IsolateRef> spawnIsolate(Uri path, dynamic endPointOrUri, [Map<String, dynamic> properties]) async {
     _log.fine('[spawnIsolate] path=$path, endPointOrUri=$endPointOrUri, properties=$properties ');

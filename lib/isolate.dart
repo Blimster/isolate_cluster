@@ -1,15 +1,25 @@
 part of isolate_cluster;
 
-/**
- * The entry point for an isolate spawned by IsolateCluster.
- */
-typedef EntryPoint(IsolateContext);
+///
+/// The entry point for an isolate spawned by the isolate cluster.
+///
+/// The entry point will be executed after the isolate was spawned. An entry points a good
+/// location to register listeners for cluster events (e.g. message or isolate up). As long
+/// as the entry point is executed, no events will be dispatched to registered listeners.
+/// Events occuring while the entry point is executing will be buffered and dispatched as soon
+/// as the entry point is completely executed.
+///
+typedef void EntryPoint(IsolateContext);
 
-/**
- * A listener to a request for shutdown an isolate. Such a listener should release resource acquired by the isolate
- * and call IsolateContext.shutdown() finally.
- */
-typedef ShutdownRequestListener();
+///
+/// A listener to a request for shutdown an isolate.
+///
+/// Such a listener should release resources acquired by the isolate and call
+/// [IsolateContext.shutdownIsolate] finally.
+///
+typedef void ShutdownRequestListener();
+
+typedef void _EventPublisher(dynamic);
 
 /**
  * A message sent to an isolate containing the [sender], [replyTo], [content] and the [type].
@@ -112,10 +122,11 @@ class IsolateContext {
   final ReceivePort _receivePort;
   final Uri _path;
   final Map<String, dynamic> _properties;
-  final StreamController<Message> _payloadStreamController = new StreamController();
-  final StreamController<IsolateRef> _isolateUpStreamController = new StreamController();
+  final StreamController<Message> _payloadEvents = new StreamController.broadcast();
+  final StreamController<IsolateRef> _isolateUpEvents = new StreamController.broadcast();
   int _nextCompleterRef = 0;
   ShutdownRequestListener _shutdownRequestListener;
+  _EventPublisher _publishEvent;
 
   IsolateContext._internal(this._sendPort, this._receivePort, this._path, this._properties) {
     _receivePort.listen((msg) => _processMessage(msg));
@@ -132,14 +143,14 @@ class IsolateContext {
   dynamic property(String key) => _properties[key];
 
   /**
-   * A stream of message sent to the isolate this context is bound to.
+   * A broadcast stream of message sent to the isolate this context is bound to.
    */
-  Stream<Message> get onMessage => _payloadStreamController.stream;
+  Stream<Message> get onMessage => _payloadEvents.stream;
 
   /**
-   * A stream of isolate up events.
+   * A broadcast stream of isolate up events.
    */
-  Stream<IsolateRef> get onIsolateUp => _isolateUpStreamController.stream;
+  Stream<IsolateRef> get onIsolateUp => _isolateUpEvents.stream;
 
   /**
    * The [ShutdownRequestListener] is called, when the isolate this context is bound to, receives a shutdown request.
@@ -160,7 +171,8 @@ class IsolateContext {
    *
    * You can provide some [properties] optionally.
    *
-   * This method returns a future which completes with an reference to the isolate.
+   * This method returns a future which completes with an reference to the isolate. The future completes 
+   * when the new isolate is spawned, but the [EntryPoint] of the new isolate may not be completely executed. 
    */
   Future<IsolateRef> spawnIsolate(Uri path, dynamic entryPointOrUri, [Map<String, dynamic> properties]) async {
     _log.fine('[${_localIsolateRef}][spawnIsolate] path=$path, endPointOrUri=$entryPointOrUri, properties=$properties');
@@ -212,10 +224,10 @@ class IsolateContext {
     if (path == null) {
       throw new ArgumentError('parameter [path] must not be null!');
     }
-    if(!path.hasAbsolutePath) {
+    if (!path.hasAbsolutePath) {
       throw new ArgumentError('parameter [path] must be an absolute uri!');
     }
-    if(!path.pathSegments.last.isEmpty) {
+    if (!path.pathSegments.last.isEmpty) {
       throw new ArgumentError('parameter [path] must end with a slash (/)!');
     }
 
@@ -231,8 +243,8 @@ class IsolateContext {
    */
   shutdownIsolate() {
     _log.fine('[${_localIsolateRef}][shutdownIsolate]');
-    _payloadStreamController.close();
-    _isolateUpStreamController.close();
+    _payloadEvents.close();
+    _isolateUpEvents.close();
     _sendPort.send(_IsolateReadyForShutdownMsg.INSTANCE.toMap());
   }
 
@@ -252,12 +264,11 @@ class IsolateContext {
       switch (type) {
         case _PAYLOAD_MSG:
           final _PayloadMsg payloadMsg = new _PayloadMsg.fromMap(map);
-          _payloadStreamController.add(new Message._internal(
+          _publishEvent(new Message._internal(
               payloadMsg.sender, payloadMsg.replyTo, payloadMsg.payload, payloadMsg.type, payloadMsg.correlationId));
           break;
         case _ISOLATE_UP_MSG:
-          final _IsolateUpMsg isolateUpMsg = new _IsolateUpMsg.fromMap(map);
-          _isolateUpStreamController.add(isolateUpMsg.isolateRef);
+          _publishEvent(new _IsolateUpMsg.fromMap(map).isolateRef);
           break;
         case _ISOLATE_SHUTDOWN_REQUEST_MSG:
           if (_shutdownRequestListener != null) {
@@ -308,8 +319,26 @@ _bootstrapIsolate(_IsolateBootstrapMsg msg) {
   // send the send port of this isolate to the node
   msg.sendPortBootstrap.send(new _IsolateBootstrappedMsg(receivePort.sendPort).toMap());
 
+  // before the entry point is completely executed, buffer incoming event in a queue
+  Queue eventQueue = new Queue();
+  _context._publishEvent = (event) {
+    eventQueue.add(event);
+  };
+
   // call entry point
   msg.entryPoint(_context);
+
+  // entry point is executed. from now on publish event directly to the stream 
+  _context._publishEvent = (event) {
+    if (event is Message) {
+      _context._payloadEvents.add(event);
+    } else if (event is IsolateRef) {
+      _context._isolateUpEvents.add(event);
+    }
+  };
+  while (eventQueue.isNotEmpty) {
+    _context._publishEvent(eventQueue.removeFirst());
+  }
 }
 
 /**

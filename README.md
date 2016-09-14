@@ -93,7 +93,8 @@ spawned(IsolateContext isolateContext) {
   
 ## Roadmap
 
-These feature will be implemented in the (near) future:
+These features will be implemented in the (near) future:
 
+- **Support Common Use Cases:** Provide helper classes, that handle common use cases when working in a cluster environment  
 - **Supervision:** Every isolate has a supervisor, that will be informed in the case of a failure
 - **Multi-Node:** Support for clusters distributed over multiple DartVMs
