@@ -1,3 +1,7 @@
+# Version 0.11.0
+
+-
+
 # Version 0.10.0
 
 - BREAKING CHANGE: Streams returned by IsolateContext.onMessage and IsolateContext.onIsolateUp are now broadcast streams and start emitting events after the entry point of the isolate was completely executed.
