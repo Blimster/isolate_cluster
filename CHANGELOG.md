@@ -1,3 +1,7 @@
+# Version 0.12.0
+
+- 
+
 # Version 0.11.0
 
 - Added helper to send messages to a group of isolate of 'same type' using a round robin strategy.
