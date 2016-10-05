@@ -1,6 +1,7 @@
 # Version 0.11.0
 
--
+- Added helper to send messages to a group of isolate of 'same type' using a round robin strategy.
+- Added helper to dispatch messages received by an isolate to handlers based on the message type.
 
 # Version 0.10.0
 
