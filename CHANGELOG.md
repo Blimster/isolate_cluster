@@ -1,3 +1,7 @@
+# Version 0.12.0
+
+- 
+
 # Version 0.11.1
 
 - Bugfix: fixed hard-coded paths
