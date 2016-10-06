@@ -31,9 +31,9 @@ class IsolateRefGroup {
 
   Future<IsolateRefGroup> _init() async {
     _state = _IsolateRefGroupState.INITIALIZING;
-    List<IsolateRef> refs = await _context.lookupIsolates(Uri.parse('/dispatcher/'));
+    List<IsolateRef> refs = await _context.lookupIsolates(path);
     refs.forEach((ref) => _isolates[ref.path] = ref);
-    _context.onIsolateUp.where((ref) => ref.path.path.startsWith('/dispatcher/')).listen(_onIsolateUp);
+    _context.onIsolateUp.where((ref) => ref.path.path.startsWith(path.toString())).listen(_onIsolateUp);
     _state = _IsolateRefGroupState.INITIALIZED;
     return new Future.value(this);
   }
