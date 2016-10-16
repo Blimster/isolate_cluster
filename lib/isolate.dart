@@ -143,6 +143,11 @@ class IsolateContext {
   dynamic property(String key) => _properties[key];
 
   /**
+   * Returns the [IsolateRef] for this isolate.
+   */
+  IsolateRef get isolateRef => _localIsolateRef;
+
+  /**
    * A broadcast stream of message sent to the isolate this context is bound to.
    */
   Stream<Message> get onMessage => _payloadEvents.stream;

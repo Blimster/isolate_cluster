@@ -1,6 +1,6 @@
 # Version 0.12.0
 
-- 
+- Added getter for a local isolate ref to the isolate content. 
 
 # Version 0.11.1
 
