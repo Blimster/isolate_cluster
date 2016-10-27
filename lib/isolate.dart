@@ -76,7 +76,7 @@ class IsolateRef {
   IsolateRef._fromMap(Map<String, dynamic> map) {
     _sendPort = map[_SEND_PORT];
     _path = Uri.parse(map[_PATH]);
-    _properties = map[_PROPERTIES];
+    _properties = map[_PROPERTIES] as Map<String, dynamic>;
   }
 
   Map<String, dynamic> _toMap() {
@@ -116,7 +116,7 @@ class IsolateRef {
  */
 class IsolateContext {
   final Logger _log = new Logger('isolate_cluster.context');
-  final Map<int, Completer<IsolateRef>> _pendingCompleters = {};
+  final Map<int, Completer<dynamic>> _pendingCompleters = {};
   final Map<Uri, IsolateRef> _isolateRefs = {};
   final SendPort _sendPort;
   final ReceivePort _receivePort;
@@ -238,7 +238,7 @@ class IsolateContext {
 
     _nextCompleterRef++;
     _sendPort.send(new _IsolateLookUpMsg(_nextCompleterRef, false, path).toMap());
-    var completer = new Completer<IsolateRef>();
+    var completer = new Completer<List<IsolateRef>>();
     _pendingCompleters[_nextCompleterRef] = completer;
     return completer.future;
   }
@@ -263,7 +263,7 @@ class IsolateContext {
 
   _processMessage(var msg) {
     _log.fine('[${_localIsolateRef}][_processMessage] msg=$msg');
-    if (msg is Map) {
+    if (msg is Map<String, dynamic>) {
       Map<String, dynamic> map = msg;
       String type = map[_MSG_TYPE];
       switch (type) {
@@ -333,7 +333,7 @@ _bootstrapIsolate(_IsolateBootstrapMsg msg) {
   // call entry point
   msg.entryPoint(_context);
 
-  // entry point is executed. from now on publish event directly to the stream 
+  // entry point is executed. from now on publish event directly to the stream
   _context._publishEvent = (event) {
     if (event is Message) {
       _context._payloadEvents.add(event);
@@ -347,11 +347,12 @@ _bootstrapIsolate(_IsolateBootstrapMsg msg) {
 }
 
 /**
- * This function is supposed to be called as first operation in a main() function of an isolate,
- * if the isolate is spawned using an uri.
+ * This function is supposed to be called as first operation in a main(args, message) function of an isolate,
+ * if the isolate is spawned using an uri. You have to provide the second argument ([message]) to this function.
  */
-bootstrapIsolate(List args, EntryPoint entryPoint) {
-  final bootstrapMsg = new _IsolateBootstrapMsg(args[0], args[1], entryPoint, args[2], args[3]);
+bootstrapIsolate(dynamic message, EntryPoint entryPoint) {
+  final bootstrapMsg =
+      new _IsolateBootstrapMsg(message[0], message[1], entryPoint, message[2], message[3] as Map<String, dynamic>);
   _bootstrapIsolate(bootstrapMsg);
 }
 

@@ -1,3 +1,7 @@
+# Version 0.13.0
+
+- Now supports Dart strong mode. 
+
 # Version 0.12.0
 
 - Added getter for a local isolate ref to the isolate content. 

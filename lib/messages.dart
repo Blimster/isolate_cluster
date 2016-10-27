@@ -44,8 +44,8 @@ class _IsolateBootstrapMsg {
       : sendPortBootstrap = map[_SEND_PORT_BOOTSTRAP],
         sendPortPayload = map[_SEND_PORT_PAYLOAD],
         path = Uri.parse(map[_PATH]),
-        entryPoint = map[_ENTRY_POINT],
-        properties = map[_PROPERTIES];
+        entryPoint = map[_ENTRY_POINT] as EntryPoint,
+        properties = map[_PROPERTIES] as Map<String, dynamic>;
 
   Map<String, dynamic> toMap() {
     return {
@@ -85,8 +85,8 @@ class _PayloadMsg {
   _PayloadMsg(this.sender, this.replyTo, this.payload, this.type, this.correlationId);
 
   _PayloadMsg.fromMap(Map<String, dynamic> map)
-      : sender = map[_SENDER] != null ? new IsolateRef._fromMap(map[_SENDER]) : null,
-        replyTo = map[_REPLY_TO] != null ? new IsolateRef._fromMap(map[_REPLY_TO]) : null,
+      : sender = map[_SENDER] != null ? new IsolateRef._fromMap(map[_SENDER] as Map<String, dynamic>) : null,
+        replyTo = map[_REPLY_TO] != null ? new IsolateRef._fromMap(map[_REPLY_TO] as Map<String, dynamic>) : null,
         payload = map[_PAYLOAD],
         type = map[_TYPE],
         correlationId = map[_CORRELATION_ID];
@@ -118,9 +118,9 @@ class _IsolateSpawnMsg {
   _IsolateSpawnMsg.fromMap(Map<String, dynamic> map)
       : correlationId = map[_CORRELATION_ID],
         path = Uri.parse(map[_PATH]),
-        entryPoint = map[_ENTRY_POINT],
+        entryPoint = map[_ENTRY_POINT] as EntryPoint,
         uri = map[_URI],
-        properties = map[_PROPERTIES];
+        properties = map[_PROPERTIES] as Map<String, dynamic>;
 
   Map<String, dynamic> toMap() {
     return {
@@ -146,7 +146,7 @@ class _IsolateSpawnedMsg {
 
   _IsolateSpawnedMsg.fromMap(Map<String, dynamic> map)
       : correlationId = map[_CORRELATION_ID],
-        isolateRef = map[_ISOLATE_REF] != null ? new IsolateRef._fromMap(map[_ISOLATE_REF]) : null,
+        isolateRef = map[_ISOLATE_REF] != null ? new IsolateRef._fromMap(map[_ISOLATE_REF] as Map<String, dynamic>) : null,
         error = map[_ERROR];
 
   Map<String, dynamic> toMap() {
@@ -196,7 +196,7 @@ class _IsolateLookedUpMsg {
       : correlationId = map[_CORRELATION_ID],
         singleIsolate = map[_SINGLE_ISOLATE],
         path = Uri.parse(map[_PATH]),
-        isolateRefs = map[_ISOLATE_REFS].map((refAsMap) => new IsolateRef._fromMap(refAsMap)).toList();
+        isolateRefs = map[_ISOLATE_REFS].map((refAsMap) => new IsolateRef._fromMap(refAsMap as Map<String, dynamic>)).toList() as List<IsolateRef>;
 
   Map<String, dynamic> toMap() {
     return {
@@ -217,7 +217,7 @@ class _IsolateUpMsg {
   _IsolateUpMsg(this.isolateRef);
 
   _IsolateUpMsg.fromMap(Map<String, dynamic> map)
-      : isolateRef = map[_ISOLATE_REF] != null ? new IsolateRef._fromMap(map[_ISOLATE_REF]) : null;
+      : isolateRef = map[_ISOLATE_REF] != null ? new IsolateRef._fromMap(map[_ISOLATE_REF] as Map<String, dynamic>) : null;
 
   Map<String, dynamic> toMap() {
     return {_MSG_TYPE: _ISOLATE_UP_MSG, _ISOLATE_REF: isolateRef._toMap()};

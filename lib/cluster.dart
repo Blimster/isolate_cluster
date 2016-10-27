@@ -99,14 +99,15 @@ class IsolateCluster {
                 receivePortBootstrap.sendPort, isolateInfo.receivePort.sendPort, entryPoint, path, properties));
       } else if (endPointOrUri is Uri) {
         Uri uri = endPointOrUri;
-        isolateInfo.isolate = await Isolate.spawnUri(
-            uri, [receivePortBootstrap.sendPort, isolateInfo.receivePort.sendPort, path, properties], null);
+        isolateInfo.isolate = await Isolate
+            .spawnUri(uri, [], [receivePortBootstrap.sendPort, isolateInfo.receivePort.sendPort, path, properties]);
       } else {
         throw new ArgumentError("parameter 'target' must be of type Uri or EntryPoint!");
       }
 
       // wait for the first message from the spawned isolate
-      final isolateBootstrappedMsg = new _IsolateBootstrappedMsg.fromMap(await receivePortBootstrap.first);
+      final isolateBootstrappedMsg =
+          new _IsolateBootstrappedMsg.fromMap(await receivePortBootstrap.first as Map<String, dynamic>);
 
       // create and store a reference to the spawned isolate
       isolateInfo.isolateRef = new IsolateRef._internal(isolateBootstrappedMsg.sendPort, path, properties);
@@ -232,7 +233,7 @@ class IsolateCluster {
 
   _processMessage(IsolateRef ref, var msg) async {
     _log.fine('[_processMessage] ref=$ref, msg=$msg');
-    if (msg is Map) {
+    if (msg is Map<String, dynamic>) {
       final Map<String, dynamic> map = msg;
       final String type = map[_MSG_TYPE];
       switch (type) {
@@ -258,15 +259,15 @@ class IsolateCluster {
         case _ISOLATE_LOOK_UP_MSG:
           final _IsolateLookUpMsg isolateLookUpMsg = new _IsolateLookUpMsg.fromMap(map);
 
-          final isolateRefs = [];
-          if(isolateLookUpMsg.singleIsolate) {
+          final isolateRefs = <IsolateRef>[];
+          if (isolateLookUpMsg.singleIsolate) {
             isolateRefs.add(_isolateInfos[isolateLookUpMsg.path].isolateRef);
           } else {
             isolateRefs.addAll(await lookupIsolates(isolateLookUpMsg.path));
           }
 
-          ref._sendPort.send(new _IsolateLookedUpMsg(isolateLookUpMsg.correlationId, isolateLookUpMsg.singleIsolate,
-                  isolateLookUpMsg.path, isolateRefs)
+          ref._sendPort.send(new _IsolateLookedUpMsg(
+                  isolateLookUpMsg.correlationId, isolateLookUpMsg.singleIsolate, isolateLookUpMsg.path, isolateRefs)
               .toMap());
           break;
       }
