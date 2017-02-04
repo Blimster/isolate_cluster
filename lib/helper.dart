@@ -75,7 +75,7 @@ Future<IsolateRefGroup> isolateRefGroupFor(Uri path) async {
 ///
 /// To register to a [MessageDispatcher] to handle a message of a specific type.
 ///
-typedef Future MessageHandler(Message msg);
+typedef Future MessageHandler(IsolateMessage msg);
 
 ///
 /// Dispatches a message to a handler registered for a specific type.
@@ -92,7 +92,7 @@ class MessageDispatcher {
   /// If a handler was registered, the futured will complete with [true] when the handler
   /// has completed to handle the message.
   ///
-  Future<bool> dispatch(Message message) async {
+  Future<bool> dispatch(IsolateMessage message) async {
     final handler = _handlers[message.type];
     if (handler == null) {
       return new Future.value(false);

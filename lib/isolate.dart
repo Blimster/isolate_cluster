@@ -24,14 +24,14 @@ typedef void _EventPublisher(dynamic);
 /**
  * A message sent to an isolate containing the [sender], [replyTo], [content] and the [type].
  */
-class Message {
+class IsolateMessage {
   final IsolateRef _sender;
   final IsolateRef _replyTo;
   final String _content;
   final String _type;
   final String _correlationId;
 
-  const Message._internal(this._sender, this._replyTo, this._content, this._type, this._correlationId);
+  const IsolateMessage._internal(this._sender, this._replyTo, this._content, this._type, this._correlationId);
 
   /**
    * Returns an isolate ref to the the sender of this messages.
@@ -122,7 +122,7 @@ class IsolateContext {
   final ReceivePort _receivePort;
   final Uri _path;
   final Map<String, dynamic> _properties;
-  final StreamController<Message> _payloadEvents = new StreamController.broadcast();
+  final StreamController<IsolateMessage> _payloadEvents = new StreamController.broadcast();
   final StreamController<IsolateRef> _isolateUpEvents = new StreamController.broadcast();
   int _nextCompleterRef = 0;
   ShutdownRequestListener _shutdownRequestListener;
@@ -150,7 +150,7 @@ class IsolateContext {
   /**
    * A broadcast stream of message sent to the isolate this context is bound to.
    */
-  Stream<Message> get onMessage => _payloadEvents.stream;
+  Stream<IsolateMessage> get onMessage => _payloadEvents.stream;
 
   /**
    * A broadcast stream of isolate up events.
@@ -269,7 +269,7 @@ class IsolateContext {
       switch (type) {
         case _PAYLOAD_MSG:
           final _PayloadMsg payloadMsg = new _PayloadMsg.fromMap(map);
-          _publishEvent(new Message._internal(
+          _publishEvent(new IsolateMessage._internal(
               payloadMsg.sender, payloadMsg.replyTo, payloadMsg.payload, payloadMsg.type, payloadMsg.correlationId));
           break;
         case _ISOLATE_UP_MSG:
@@ -335,7 +335,7 @@ _bootstrapIsolate(_IsolateBootstrapMsg msg) {
 
   // entry point is executed. from now on publish event directly to the stream
   _context._publishEvent = (event) {
-    if (event is Message) {
+    if (event is IsolateMessage) {
       _context._payloadEvents.add(event);
     } else if (event is IsolateRef) {
       _context._isolateUpEvents.add(event);

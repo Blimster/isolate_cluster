@@ -1,3 +1,7 @@
+# Version 0.14.0
+
+- BREAKING CHANGE: Renamed class Message to IsolateMessage. 
+
 # Version 0.13.0
 
 - Now supports Dart strong mode. 
