@@ -1,6 +1,7 @@
 # Version 0.14.0
 
-- BREAKING CHANGE: Renamed class Message to IsolateMessage. 
+- BREAKING CHANGE: Renamed class Message to IsolateMessage.
+- It is now possible to register an (isolate local) error listener to listen to errors occured (and not catched) in the context of the isolate. If no listener is registered, the error is logged as a WARNING.
 
 # Version 0.13.0
 

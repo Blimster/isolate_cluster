@@ -21,6 +21,23 @@ typedef void ShutdownRequestListener();
 
 typedef void _EventPublisher(dynamic);
 
+///
+/// Provides the error itself and the stacktrace of an error occured (and not catched) in the context of an isolate.
+///
+class IsolateError {
+
+  final dynamic error;
+  final StackTrace stackTrace;
+
+  const IsolateError(this.error, this.stackTrace);
+
+  @override
+  String toString() {
+    return 'IsolateError{error: $error, stackTrace: $stackTrace}';
+  }
+
+}
+
 /**
  * A message sent to an isolate containing the [sender], [replyTo], [content] and the [type].
  */
@@ -124,6 +141,7 @@ class IsolateContext {
   final Map<String, dynamic> _properties;
   final StreamController<IsolateMessage> _payloadEvents = new StreamController.broadcast();
   final StreamController<IsolateRef> _isolateUpEvents = new StreamController.broadcast();
+  final StreamController<IsolateError> _errorEvents = new StreamController.broadcast();
   int _nextCompleterRef = 0;
   ShutdownRequestListener _shutdownRequestListener;
   _EventPublisher _publishEvent;
@@ -158,32 +176,37 @@ class IsolateContext {
   Stream<IsolateRef> get onIsolateUp => _isolateUpEvents.stream;
 
   /**
+   * A broadcast stream of error thrown and not catched by code that was executed in the context of an isolate.
+   */
+  Stream<IsolateError> get onError => _errorEvents.stream;
+
+  /**
    * The [ShutdownRequestListener] is called, when the isolate this context is bound to, receives a shutdown request.
    */
   set shutdownRequestListener(ShutdownRequestListener listener) => _shutdownRequestListener = listener;
 
   /**
    * Spawns a new isolate in the cluster this node belongs to. The provided
-   * [entryPointOrUri] can be an [EntryPoint] or an [URI]. 
+   * [entryPointOrUri] can be an [EntryPoint] or an [URI].
    *
-   * In the first case, the [EntryPoint] is called after the isolate is spawned. 
+   * In the first case, the [EntryPoint] is called after the isolate is spawned.
    * The entry point is executed in spawned isolate.
    *
-   * In the second case, the main(List args) function of the give target file is called. In 
+   * In the second case, the main(List args) function of the give target file is called. In
    * the main funtion, the first call should be [bootstrapIsolate(List,EntryPoint)]
    * to bootstrap the cluster environment. The first parameter has to be the [args] parameter
-   * provided to the main() function. When the environment is up, the given [EntryPoint] is called. 
+   * provided to the main() function. When the environment is up, the given [EntryPoint] is called.
    *
    * You can provide some [properties] optionally.
    *
-   * This method returns a future which completes with an reference to the isolate. The future completes 
-   * when the new isolate is spawned, but the [EntryPoint] of the new isolate may not be completely executed. 
+   * This method returns a future which completes with an reference to the isolate. The future completes
+   * when the new isolate is spawned, but the [EntryPoint] of the new isolate may not be completely executed.
    */
   Future<IsolateRef> spawnIsolate(Uri path, dynamic entryPointOrUri, [Map<String, dynamic> properties]) async {
     _log.fine('[${_localIsolateRef}][spawnIsolate] path=$path, endPointOrUri=$entryPointOrUri, properties=$properties');
     _nextCompleterRef++;
     _sendPort.send(new _IsolateSpawnMsg(_nextCompleterRef, path, entryPointOrUri is EntryPoint ? entryPointOrUri : null,
-            entryPointOrUri is Uri ? entryPointOrUri : null, properties)
+        entryPointOrUri is Uri ? entryPointOrUri : null, properties)
         .toMap());
     final completer = new Completer<IsolateRef>();
     _pendingCompleters[_nextCompleterRef] = completer;
@@ -313,37 +336,46 @@ class IsolateContext {
 
 // this function is called after the new isolate is spawned
 _bootstrapIsolate(_IsolateBootstrapMsg msg) {
-  var receivePort = new ReceivePort();
+  runZoned(() {
+    var receivePort = new ReceivePort();
 
-  // initialize the local isolate ref
-  _localIsolateRef = new IsolateRef._internal(receivePort.sendPort, msg.path, msg.properties);
+    // initialize the local isolate ref
+    _localIsolateRef = new IsolateRef._internal(receivePort.sendPort, msg.path, msg.properties);
 
-  // create the context and store it local to this isolate
-  _context = new IsolateContext._internal(msg.sendPortPayload, receivePort, msg.path, msg.properties);
+    // create the context and store it local to this isolate
+    _context = new IsolateContext._internal(msg.sendPortPayload, receivePort, msg.path, msg.properties);
 
-  // send the send port of this isolate to the node
-  msg.sendPortBootstrap.send(new _IsolateBootstrappedMsg(receivePort.sendPort).toMap());
+    // send the send port of this isolate to the node
+    msg.sendPortBootstrap.send(new _IsolateBootstrappedMsg(receivePort.sendPort).toMap());
 
-  // before the entry point is completely executed, buffer incoming event in a queue
-  Queue eventQueue = new Queue();
-  _context._publishEvent = (event) {
-    eventQueue.add(event);
-  };
+    // before the entry point is completely executed, buffer incoming event in a queue
+    Queue eventQueue = new Queue();
+    _context._publishEvent = (event) {
+      eventQueue.add(event);
+    };
 
-  // call entry point
-  msg.entryPoint(_context);
+    // call entry point
+    msg.entryPoint(_context);
 
-  // entry point is executed. from now on publish event directly to the stream
-  _context._publishEvent = (event) {
-    if (event is IsolateMessage) {
-      _context._payloadEvents.add(event);
-    } else if (event is IsolateRef) {
-      _context._isolateUpEvents.add(event);
+    // entry point is executed. from now on publish event directly to the stream
+    _context._publishEvent = (event) {
+      if (event is IsolateMessage) {
+        _context._payloadEvents.add(event);
+      } else if (event is IsolateRef) {
+        _context._isolateUpEvents.add(event);
+      }
+    };
+    while (eventQueue.isNotEmpty) {
+      _context._publishEvent(eventQueue.removeFirst());
     }
-  };
-  while (eventQueue.isNotEmpty) {
-    _context._publishEvent(eventQueue.removeFirst());
-  }
+  }, onError: (error, stacktrace) {
+    if (_context._errorEvents.hasListener) {
+      _context._errorEvents.add(new IsolateError(error, stacktrace));
+    } else {
+      _context._log.warning(
+          '[${_localIsolateRef}] - an error was thrown (and not catched) by code running in the context of this isolate and there is no error listener registered! error=$error, stacktrace=${stacktrace}');
+    }
+  });
 }
 
 /**
@@ -352,7 +384,7 @@ _bootstrapIsolate(_IsolateBootstrapMsg msg) {
  */
 bootstrapIsolate(dynamic message, EntryPoint entryPoint) {
   final bootstrapMsg =
-      new _IsolateBootstrapMsg(message[0], message[1], entryPoint, message[2], message[3] as Map<String, dynamic>);
+  new _IsolateBootstrapMsg(message[0], message[1], entryPoint, message[2], message[3] as Map<String, dynamic>);
   _bootstrapIsolate(bootstrapMsg);
 }
 
