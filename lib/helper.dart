@@ -9,18 +9,75 @@ enum _IsolateRefGroupState {
 }
 
 ///
+/// Implementations of this interfaces select isolate refs by a specific strategy.
+///
+abstract class IsolateRefSelector {
+
+  ///
+  ///
+  ///
+  List<IsolateRef> selectTargetsForMessage(List<IsolateRef> isolateRefs, String message, String type, String correlationId);
+
+}
+
+class RoundRobinIsolateRefSelector implements IsolateRefSelector {
+
+  int _isolateIndex = 0;
+
+  @override
+  List<IsolateRef> selectTargetsForMessage(List<IsolateRef> isolateRefs, String message, String type, String correlationId) {
+    if (isolateRefs == null || isolateRefs.isEmpty) {
+      return [];
+    }
+    _isolateIndex++;
+    if (_isolateIndex >= isolateRefs.length) {
+      _isolateIndex = 0;
+    }
+    return [isolateRefs[_isolateIndex]];
+  }
+
+}
+
+class AllIsolateRefSelector implements IsolateRefSelector {
+
+  final bool _excludeSelf;
+
+  AllIsolateRefSelector(this._excludeSelf);
+
+  @override
+  List<IsolateRef> selectTargetsForMessage(List<IsolateRef> isolateRefs, String message, String type, String correlationId) {
+    if (isolateRefs == null || isolateRefs.isEmpty) {
+      return [];
+    }
+
+    if (!_excludeSelf) {
+      return isolateRefs;
+    }
+
+    return new List<IsolateRef>.from(isolateRefs, growable: false)
+      ..remove(_context.isolateRef);
+  }
+
+}
+
+///
+/// This selector is used by an
+///
+final IsolateRefSelector DEFAULT_SELECTOR = new RoundRobinIsolateRefSelector();
+
+///
 /// A group of isolate beneath an URI.
 ///
 /// Use this class to access isolates of same type as if they were one. Isolates of same
 /// type should be beneath the same URI path (ending with a slash) a should have the same API.
 ///
 class IsolateRefGroup {
-  final Uri path;
+  final Uri _path;
   final Map<Uri, IsolateRef> _isolates = new SplayTreeMap((k1, k2) => k1.toString().compareTo(k2.toString()));
   _IsolateRefGroupState _state = _IsolateRefGroupState.CREATED;
   int _isolateIndex = 0;
 
-  IsolateRefGroup._internal(Uri path) : this.path = path {
+  IsolateRefGroup._internal(Uri path) : this._path = path {
     if (_context == null) {
       throw new StateError('no context available!');
     }
@@ -31,9 +88,9 @@ class IsolateRefGroup {
 
   Future<IsolateRefGroup> _init() async {
     _state = _IsolateRefGroupState.INITIALIZING;
-    List<IsolateRef> refs = await _context.lookupIsolates(path);
+    List<IsolateRef> refs = await _context.lookupIsolates(_path);
     refs.forEach((ref) => _isolates[ref.path] = ref);
-    _context.onIsolateUp.where((ref) => ref.path.path.startsWith(path.toString())).listen(_onIsolateUp);
+    _context.onIsolateUp.where((ref) => ref.path.path.startsWith(_path.toString())).listen(_onIsolateUp);
     _state = _IsolateRefGroupState.INITIALIZED;
     return new Future.value(this);
   }
@@ -43,18 +100,22 @@ class IsolateRefGroup {
   }
 
   ///
-  /// Send a message to one of the isolates of this group.
+  /// Returns the path of this [IsolateRefGroup].
   ///
-  /// By default, messages are sent using a round robin strategy.
+  Uri get path => _path;
+
   ///
-  send(String message, {String type, String correlationId, IsolateRef replyTo}) {
-    _isolateIndex++;
-    if (_isolateIndex >= _isolates.length) {
-      _isolateIndex = 0;
+  /// Sends a message to zero, one or more isolates of this group.
+  ///
+  /// By default, messages are sent to one isolate using a round robin strategy.
+  ///
+  send(String message, {String type, String correlationId, IsolateRef replyTo, IsolateRefSelector selector}) {
+    final targets = (selector ?? DEFAULT_SELECTOR).selectTargetsForMessage(new List<IsolateRef>.from(_isolates.values, growable: false), message, type, correlationId);
+    if(targets != null) {
+      targets.forEach((target) => target.send(message, type: type, correlationId: correlationId, replyTo: replyTo));
     }
-    final isolateRef = _isolates.values.elementAt(_isolateIndex);
-    isolateRef.send(message, type: type, correlationId: correlationId, replyTo: replyTo);
   }
+
 }
 
 ///
@@ -107,7 +168,9 @@ class MessageDispatcher {
   /// It is an error to register a handler for a type another handler is already registered to.
   ///
   void setHandler(String type, MessageHandler handler) {
-    if (type == null || type.trim().isEmpty) {
+    if (type == null || type
+        .trim()
+        .isEmpty) {
       throw new ArgumentError('param [type] must not be null or empty!');
     }
     if (handler == null) {

@@ -1,3 +1,7 @@
+# Version 0.15.0
+
+- It is now possible to provide a selector to IsolateRefGroup.send() to support different target selection strategies.
+
 # Version 0.14.0
 
 - BREAKING CHANGE: Renamed class Message to IsolateMessage.
