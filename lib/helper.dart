@@ -54,8 +54,7 @@ class AllIsolateRefSelector implements IsolateRefSelector {
       return isolateRefs;
     }
 
-    return new List<IsolateRef>.from(isolateRefs, growable: false)
-      ..remove(_context.isolateRef);
+    return new List<IsolateRef>.from(isolateRefs.where((ref) => ref.path != _context.isolateRef.path));
   }
 
 }

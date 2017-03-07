@@ -1,3 +1,7 @@
+# Version 0.15.1
+
+- Bugfix: Fixed an exception in AllIsolateRefSelector.
+
 # Version 0.15.0
 
 - It is now possible to provide a selector to IsolateRefGroup.send() to support different target selection strategies.
