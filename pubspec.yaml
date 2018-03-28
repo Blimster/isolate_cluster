@@ -1,11 +1,11 @@
 name: isolate_cluster
-version: 0.16.0
+version: 0.16.1
 description: A library to build up a cluster of isolates.
 author: Oliver Damm <oliver.damm@gmx.de>
 homepage: http://www.github.com/blimster/isolate_cluster
 
 environment:
-  sdk: '>=2.0.0-dev.43.0 <2.0.0'
+  sdk: '>=2.0.0-dev.40.0 <2.0.0'
 
 dependencies:
   uuid: ^0.5.0
