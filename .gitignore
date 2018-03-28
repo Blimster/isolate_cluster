@@ -2,3 +2,4 @@
 .pub/
 pubspec.lock
 .vscode
+.dart_tool/**

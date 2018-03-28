@@ -1,3 +1,9 @@
+# Version 0.16.0
+
+- Updates to be Dart 2 compliant.
+- BREAKING CHANGE: The return type of EntryPoint is now FutureOr<void>.
+- Fixed some documentation issues.
+
 # Version 0.15.1
 
 - Bugfix: Fixed an exception in AllIsolateRefSelector.

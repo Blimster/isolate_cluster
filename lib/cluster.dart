@@ -23,23 +23,23 @@ class IsolateCluster {
 
   /**
    * Spawns a new isolate in the cluster this node belongs to. The provided
-   * [entryPointOrUri] can be an [EntryPoint] or an [URI]. 
+   * [entryPointOrUri] has be an [EntryPoint] or an [URI].
    *
    * In the first case, the [EntryPoint] is called after the isolate is spawned. 
    * The entry point is executed in spawned isolate.
    *
-   * In the second case, the main(List args) function of the give target file is called. In 
-   * the main funtion, the first call should be [bootstrapIsolate(List,EntryPoint)]
-   * to bootstrap the cluster environment. The first parameter has to be the [args] parameter
-   * provided to the main() function. When the environment is up, the given [EntryPoint] is called. 
+   * In the second case, the main(args, message) function of the given target file is called. In
+   * the main function, the first call should be [bootstrapIsolate(dynamic, EntryPoint)]
+   * to bootstrap the cluster environment. The first parameter has to be the [message] parameter
+   * of the main(args, message) function. When the environment is up, the given [EntryPoint] is called.
    *
    * You can provide some [properties] optionally.
    *
    * This method returns a future which completes with an reference to the isolate. The future completes 
    * when the new isolate is spawned, but the [EntryPoint] of the new isolate may not be completely executed. 
    */
-  Future<IsolateRef> spawnIsolate(Uri path, dynamic endPointOrUri, [Map<String, dynamic> properties]) async {
-    _log.fine('[spawnIsolate] path=$path, endPointOrUri=$endPointOrUri, properties=$properties ');
+  Future<IsolateRef> spawnIsolate(Uri path, dynamic entryPointOrUri, [Map<String, dynamic> properties]) async {
+    _log.fine('[spawnIsolate] path=$path, entryPointOrUri=$entryPointOrUri, properties=$properties ');
 
     // create a copy of the provided map or an empty one, if the caller do not provide properties
     if (properties != null) {
@@ -91,14 +91,14 @@ class IsolateCluster {
       isolateInfo.receivePort = new ReceivePort();
 
       // spawn the isolate and wait for it
-      if (endPointOrUri is EntryPoint) {
-        EntryPoint entryPoint = endPointOrUri;
+      if (entryPointOrUri is EntryPoint) {
+        EntryPoint entryPoint = entryPointOrUri;
         isolateInfo.isolate = await Isolate.spawn(
             _bootstrapIsolate,
             new _IsolateBootstrapMsg(
                 receivePortBootstrap.sendPort, isolateInfo.receivePort.sendPort, entryPoint, path, properties));
-      } else if (endPointOrUri is Uri) {
-        Uri uri = endPointOrUri;
+      } else if (entryPointOrUri is Uri) {
+        Uri uri = entryPointOrUri;
         isolateInfo.isolate = await Isolate
             .spawnUri(uri, [], [receivePortBootstrap.sendPort, isolateInfo.receivePort.sendPort, path, properties]);
       } else {
@@ -173,7 +173,7 @@ class IsolateCluster {
       throw new ArgumentError('parameter [path] must end with a slash (/)!');
     }
 
-    final result = [];
+    final result = <IsolateRef>[];
     _isolateInfos.forEach((isolatePath, isolateInfo) {
       // add every isolate ref which path is beneath the given path
       if (isolatePath.toString().startsWith(path.toString())) {

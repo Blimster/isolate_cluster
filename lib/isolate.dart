@@ -9,7 +9,7 @@ part of isolate_cluster;
 /// Events occuring while the entry point is executing will be buffered and dispatched as soon
 /// as the entry point is completely executed.
 ///
-typedef void EntryPoint(IsolateContext);
+typedef EntryPoint = FutureOr<void> Function(IsolateContext);
 
 ///
 /// A listener to a request for shutdown an isolate.
@@ -25,7 +25,6 @@ typedef void _EventPublisher(dynamic);
 /// Provides the error itself and the stacktrace of an error occured (and not catched) in the context of an isolate.
 ///
 class IsolateError {
-
   final dynamic error;
   final StackTrace stackTrace;
 
@@ -35,7 +34,6 @@ class IsolateError {
   String toString() {
     return 'IsolateError{error: $error, stackTrace: $stackTrace}';
   }
-
 }
 
 /**
@@ -109,10 +107,8 @@ class IsolateRef {
    * Sends a [message] to the isolate represented by this reference.
    */
   send(String message, {String type, String correlationId, IsolateRef replyTo}) {
-    _isolateRefLog.fine(
-        '[${_localIsolateRef}][send] message=$message, type=$type, correlationId=$correlationId, replyTo=$replyTo');
-    _sendPort
-        .send(new _PayloadMsg(_localIsolateRef, replyTo ?? _localIsolateRef, message, type, correlationId).toMap());
+    _isolateRefLog.fine('[${_localIsolateRef}][send] message=$message, type=$type, correlationId=$correlationId, replyTo=$replyTo');
+    _sendPort.send(new _PayloadMsg(_localIsolateRef, replyTo ?? _localIsolateRef, message, type, correlationId).toMap());
   }
 
   /**
@@ -187,15 +183,15 @@ class IsolateContext {
 
   /**
    * Spawns a new isolate in the cluster this node belongs to. The provided
-   * [entryPointOrUri] can be an [EntryPoint] or an [URI].
+   * [entryPointOrUri] has to be an [EntryPoint] or an [URI].
    *
    * In the first case, the [EntryPoint] is called after the isolate is spawned.
    * The entry point is executed in spawned isolate.
    *
-   * In the second case, the main(List args) function of the give target file is called. In
-   * the main funtion, the first call should be [bootstrapIsolate(List,EntryPoint)]
-   * to bootstrap the cluster environment. The first parameter has to be the [args] parameter
-   * provided to the main() function. When the environment is up, the given [EntryPoint] is called.
+   * In the second case, the main(args, message) function of the give target file is called. In
+   * the main funtion, the first call should be [bootstrapIsolate(dynamic, EntryPoint)]
+   * to bootstrap the cluster environment. The first parameter has to be the [message] parameter
+   * of the main() function. When the environment is up, the given [EntryPoint] is called.
    *
    * You can provide some [properties] optionally.
    *
@@ -205,8 +201,8 @@ class IsolateContext {
   Future<IsolateRef> spawnIsolate(Uri path, dynamic entryPointOrUri, [Map<String, dynamic> properties]) async {
     _log.fine('[${_localIsolateRef}][spawnIsolate] path=$path, endPointOrUri=$entryPointOrUri, properties=$properties');
     _nextCompleterRef++;
-    _sendPort.send(new _IsolateSpawnMsg(_nextCompleterRef, path, entryPointOrUri is EntryPoint ? entryPointOrUri : null,
-        entryPointOrUri is Uri ? entryPointOrUri : null, properties)
+    _sendPort.send(new _IsolateSpawnMsg(
+            _nextCompleterRef, path, entryPointOrUri is EntryPoint ? entryPointOrUri : null, entryPointOrUri is Uri ? entryPointOrUri : null, properties)
         .toMap());
     final completer = new Completer<IsolateRef>();
     _pendingCompleters[_nextCompleterRef] = completer;
@@ -292,8 +288,7 @@ class IsolateContext {
       switch (type) {
         case _PAYLOAD_MSG:
           final _PayloadMsg payloadMsg = new _PayloadMsg.fromMap(map);
-          _publishEvent(new IsolateMessage._internal(
-              payloadMsg.sender, payloadMsg.replyTo, payloadMsg.payload, payloadMsg.type, payloadMsg.correlationId));
+          _publishEvent(new IsolateMessage._internal(payloadMsg.sender, payloadMsg.replyTo, payloadMsg.payload, payloadMsg.type, payloadMsg.correlationId));
           break;
         case _ISOLATE_UP_MSG:
           _publishEvent(new _IsolateUpMsg.fromMap(map).isolateRef);
@@ -335,7 +330,7 @@ class IsolateContext {
 }
 
 // this function is called after the new isolate is spawned
-_bootstrapIsolate(_IsolateBootstrapMsg msg) {
+void _bootstrapIsolate(_IsolateBootstrapMsg msg) {
   runZoned(() {
     var receivePort = new ReceivePort();
 
@@ -354,19 +349,27 @@ _bootstrapIsolate(_IsolateBootstrapMsg msg) {
       eventQueue.add(event);
     };
 
-    // call entry point
-    msg.entryPoint(_context);
-
-    // entry point is executed. from now on publish event directly to the stream
-    _context._publishEvent = (event) {
-      if (event is IsolateMessage) {
-        _context._payloadEvents.add(event);
-      } else if (event is IsolateRef) {
-        _context._isolateUpEvents.add(event);
+    void activateEventStreamAndPublishQueuedEvents() {
+      _context._publishEvent = (event) {
+        if (event is IsolateMessage) {
+          _context._payloadEvents.add(event);
+        } else if (event is IsolateRef) {
+          _context._isolateUpEvents.add(event);
+        }
+      };
+      while (eventQueue.isNotEmpty) {
+        _context._publishEvent(eventQueue.removeFirst());
       }
-    };
-    while (eventQueue.isNotEmpty) {
-      _context._publishEvent(eventQueue.removeFirst());
+    }
+
+    // call entry point
+    final result = msg.entryPoint(_context);
+
+    // entry point was executed. from now on publish event directly to the stream
+    if (result is Future) {
+      result.then((_) => activateEventStreamAndPublishQueuedEvents());
+    } else {
+      activateEventStreamAndPublishQueuedEvents();
     }
   }, onError: (error, stacktrace) {
     if (_context._errorEvents.hasListener) {
@@ -380,11 +383,11 @@ _bootstrapIsolate(_IsolateBootstrapMsg msg) {
 
 /**
  * This function is supposed to be called as first operation in a main(args, message) function of an isolate,
- * if the isolate is spawned using an uri. You have to provide the second argument ([message]) to this function.
+ * if the isolate is spawned using an [URI]. You have to provide the second argument of the main function (the
+ * initial message) to this function.
  */
 bootstrapIsolate(dynamic message, EntryPoint entryPoint) {
-  final bootstrapMsg =
-  new _IsolateBootstrapMsg(message[0], message[1], entryPoint, message[2], message[3] as Map<String, dynamic>);
+  final bootstrapMsg = new _IsolateBootstrapMsg(message[0], message[1], entryPoint, message[2], message[3] as Map<String, dynamic>);
   _bootstrapIsolate(bootstrapMsg);
 }
 

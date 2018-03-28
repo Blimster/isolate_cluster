@@ -1,6 +1,6 @@
-import 'package:isolate_cluster/isolate_cluster.dart';
+import 'dart:async';
 
-IsolateContext _context;
+import 'package:isolate_cluster/isolate_cluster.dart';
 
 /**
  * When an isolate is spawned using an URI, the script located by the 
@@ -13,7 +13,7 @@ main(args, message) {
   bootstrapIsolate(message, init);
 }
 
-init(IsolateContext context) {
-  _context = context;
+FutureOr<void> init(IsolateContext context) {
   print('[$context] spawned!');
+  return null;
 }
