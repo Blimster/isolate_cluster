@@ -1,5 +1,9 @@
 # Version 0.16.2
 
+- Downgraded dependency to package 'uuid' to be compatible with package 'mongo_dart'
+
+# Version 0.16.2
+
 - Dart 2 strong mode alignments.
 
 
