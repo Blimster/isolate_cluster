@@ -1,3 +1,8 @@
+# Version 0.16.2
+
+- Dart 2 strong mode alignments.
+
+
 # Version 0.16.1
 
 - Dart SDK constraint is now >=2.0.0-dev.40.0 to support Dart package analysis.

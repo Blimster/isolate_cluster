@@ -63,7 +63,7 @@ sendMessageToTest(String msg, {int port: 5000}) async {
   socket.close();
 }
 
-awaitMessagesInTest(int msgCount, {int port: 5000, int timeout: 3000}) async {
+awaitMessagesInTest(int msgCount, {int port: 5000, int timeout: 10000}) async {
   var messages = [];
   var completer = new Completer();
   var timer = new Timer(new Duration(milliseconds: timeout), () => completer.completeError('timeout after ${timeout}ms'));

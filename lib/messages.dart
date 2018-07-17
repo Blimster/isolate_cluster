@@ -196,7 +196,7 @@ class _IsolateLookedUpMsg {
       : correlationId = map[_CORRELATION_ID],
         singleIsolate = map[_SINGLE_ISOLATE],
         path = Uri.parse(map[_PATH]),
-        isolateRefs = map[_ISOLATE_REFS].map((refAsMap) => new IsolateRef._fromMap(refAsMap as Map<String, dynamic>)).toList() as List<IsolateRef>;
+        isolateRefs = (map[_ISOLATE_REFS] as List<Map<String, dynamic>>).map((refAsMap) => new IsolateRef._fromMap(refAsMap)).toList();
 
   Map<String, dynamic> toMap() {
     return {
