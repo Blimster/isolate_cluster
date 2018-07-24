@@ -1,11 +1,14 @@
-# Version 0.16.2
+# Version 0.17.0
+
+- Updated upper bound of SDK constraints to <3.0.0
+
+# Version 0.16.3
 
 - Downgraded dependency to package 'uuid' to be compatible with package 'mongo_dart'
 
 # Version 0.16.2
 
 - Dart 2 strong mode alignments.
-
 
 # Version 0.16.1
 
