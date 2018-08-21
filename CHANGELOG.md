@@ -1,3 +1,7 @@
+# Version 0.17.1
+
+- Updated SDK constraints to Dart 2 stable
+
 # Version 0.17.0
 
 - Updated upper bound of SDK constraints to <3.0.0
