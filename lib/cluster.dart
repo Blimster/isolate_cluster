@@ -244,7 +244,7 @@ class IsolateCluster {
           break;
         case _NODE_SHUTDOWN_REQUEST_MSG:
           final _NodeShutdownRequestMsg nodeShutdownRequestMsg = new _NodeShutdownRequestMsg.fromMap(map);
-          shutdown(timeout: nodeShutdownRequestMsg.duration);
+          await shutdown(timeout: nodeShutdownRequestMsg.duration);
           break;
         case _ISOLATE_SPAWN_MSG:
           final _IsolateSpawnMsg isolateSpawnMsg = new _IsolateSpawnMsg.fromMap(map);
