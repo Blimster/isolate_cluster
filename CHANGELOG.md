@@ -1,3 +1,10 @@
+# Version 0.17.2
+
+- Fix for breaking change in Dart SDK 2.5.0
+- Dart SDK 2.4.0 is required
+- Updated dependencies
+- Fixed some formatting and comments to increase package scoring
+
 # Version 0.17.1
 
 - Updated SDK constraints to Dart 2 stable

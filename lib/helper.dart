@@ -12,16 +12,13 @@ enum _IsolateRefGroupState {
 /// Implementations of this interfaces select isolate refs by a specific strategy.
 ///
 abstract class IsolateRefSelector {
-
   ///
-  ///
+  /// Selects the targets for form the list of given isolate refs for the given message, type and correlation id.
   ///
   List<IsolateRef> selectTargetsForMessage(List<IsolateRef> isolateRefs, String message, String type, String correlationId);
-
 }
 
 class RoundRobinIsolateRefSelector implements IsolateRefSelector {
-
   int _isolateIndex = 0;
 
   @override
@@ -35,11 +32,9 @@ class RoundRobinIsolateRefSelector implements IsolateRefSelector {
     }
     return [isolateRefs[_isolateIndex]];
   }
-
 }
 
 class AllIsolateRefSelector implements IsolateRefSelector {
-
   final bool _excludeSelf;
 
   AllIsolateRefSelector(this._excludeSelf);
@@ -56,7 +51,6 @@ class AllIsolateRefSelector implements IsolateRefSelector {
 
     return new List<IsolateRef>.from(isolateRefs.where((ref) => ref.path != _context.isolateRef.path));
   }
-
 }
 
 ///
@@ -109,12 +103,12 @@ class IsolateRefGroup {
   /// By default, messages are sent to one isolate using a round robin strategy.
   ///
   send(String message, {String type, String correlationId, IsolateRef replyTo, IsolateRefSelector selector}) {
-    final targets = (selector ?? DEFAULT_SELECTOR).selectTargetsForMessage(new List<IsolateRef>.from(_isolates.values, growable: false), message, type, correlationId);
-    if(targets != null) {
+    final targets =
+        (selector ?? DEFAULT_SELECTOR).selectTargetsForMessage(new List<IsolateRef>.from(_isolates.values, growable: false), message, type, correlationId);
+    if (targets != null) {
       targets.forEach((target) => target.send(message, type: type, correlationId: correlationId, replyTo: replyTo));
     }
   }
-
 }
 
 ///
@@ -167,9 +161,7 @@ class MessageDispatcher {
   /// It is an error to register a handler for a type another handler is already registered to.
   ///
   void setHandler(String type, MessageHandler handler) {
-    if (type == null || type
-        .trim()
-        .isEmpty) {
+    if (type == null || type.trim().isEmpty) {
       throw new ArgumentError('param [type] must not be null or empty!');
     }
     if (handler == null) {

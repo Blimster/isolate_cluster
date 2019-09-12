@@ -19,7 +19,7 @@ typedef EntryPoint = FutureOr<void> Function(IsolateContext);
 ///
 typedef void ShutdownRequestListener();
 
-typedef void _EventPublisher(dynamic);
+typedef void _EventPublisher(dynamic event);
 
 ///
 /// Provides the error itself and the stacktrace of an error occured (and not catched) in the context of an isolate.
@@ -36,9 +36,9 @@ class IsolateError {
   }
 }
 
-/**
- * A message sent to an isolate containing the [sender], [replyTo], [content] and the [type].
- */
+///
+/// A message sent to an isolate containing the [sender], [replyTo], [content] and the [type].
+///
 class IsolateMessage {
   final IsolateRef _sender;
   final IsolateRef _replyTo;
@@ -48,29 +48,29 @@ class IsolateMessage {
 
   const IsolateMessage._internal(this._sender, this._replyTo, this._content, this._type, this._correlationId);
 
-  /**
-   * Returns an isolate ref to the the sender of this messages.
-   */
+  ///
+  /// Returns an isolate ref to the the sender of this messages.
+  ///
   IsolateRef get sender => _sender;
 
-  /**
-   * Returns an isolate ref the receiver of this message should reply to.
-   */
+  ///
+  /// Returns an isolate ref the receiver of this message should reply to.
+  ///
   IsolateRef get replyTo => _replyTo;
 
-  /**
-   * Returns the content of this message.
-   */
+  ///
+  /// Returns the content of this message.
+  ///
   String get content => _content;
 
-  /**
-   * Returns the type of content of this message.
-   */
+  ///
+  /// Returns the type of content of this message.
+  ///
   String get type => _type;
 
-  /**
-   * Returns the correlationId of this message.
-   */
+  ///
+  /// Returns the correlationId of this message.
+  ///
   String get correlationId => _correlationId;
 
   String toString() {
@@ -78,9 +78,9 @@ class IsolateMessage {
   }
 }
 
-/**
- * A reference to an isolate spawned by IsolateCluster.
- */
+///
+/// A reference to an isolate spawned by IsolateCluster.
+///
 class IsolateRef {
   SendPort _sendPort;
   Uri _path;
@@ -98,22 +98,22 @@ class IsolateRef {
     return {_SEND_PORT: _sendPort, _PATH: _path?.toString(), _PROPERTIES: _properties};
   }
 
-  /**
-   * Returns the path of the isolate represented by this reference.
-   */
+  ///
+  /// Returns the path of the isolate represented by this reference.
+  ///
   Uri get path => _path;
 
-  /**
-   * Sends a [message] to the isolate represented by this reference.
-   */
+  ///
+  /// Sends a [message] to the isolate represented by this reference.
+  ///
   send(String message, {String type, String correlationId, IsolateRef replyTo}) {
     _isolateRefLog.fine('[${_localIsolateRef}][send] message=$message, type=$type, correlationId=$correlationId, replyTo=$replyTo');
     _sendPort.send(new _PayloadMsg(_localIsolateRef, replyTo ?? _localIsolateRef, message, type, correlationId).toMap());
   }
 
-  /**
-   * Returns the value of a property of the represented isolate.
-   */
+  ///
+  /// Returns the value of a property of the represented isolate.
+  ///
   String property(String key) {
     return _properties[key];
   }
@@ -123,10 +123,9 @@ class IsolateRef {
   }
 }
 
-/**
- * This context is provided to the [EntryPoint] of an isolate spawned by [IsolateCluster]. A context is bound to a single
- * isolate.
- */
+///
+/// This context is provided to the [EntryPoint] of an isolate spawned by [IsolateCluster]. A context is bound to a single isolate.
+///
 class IsolateContext {
   final Logger _log = new Logger('isolate_cluster.context');
   final Map<int, Completer<dynamic>> _pendingCompleters = {};
@@ -146,58 +145,58 @@ class IsolateContext {
     _receivePort.listen((msg) => _processMessage(msg));
   }
 
-  /**
-   * Returns the path of the isolate this context is bound to.
-   */
+  ///
+  /// Returns the path of the isolate this context is bound to.
+  ///
   Uri get path => _path;
 
-  /**
-   * Returns the value of a property of the isolate this context is bound to.
-   */
+  ///
+  /// Returns the value of a property of the isolate this context is bound to.
+  ///
   dynamic property(String key) => _properties[key];
 
-  /**
-   * Returns the [IsolateRef] for this isolate.
-   */
+  ///
+  /// Returns the [IsolateRef] for this isolate.
+  ///
   IsolateRef get isolateRef => _localIsolateRef;
 
-  /**
-   * A broadcast stream of message sent to the isolate this context is bound to.
-   */
+  ///
+  /// A broadcast stream of message sent to the isolate this context is bound to.
+  ///
   Stream<IsolateMessage> get onMessage => _payloadEvents.stream;
 
-  /**
-   * A broadcast stream of isolate up events.
-   */
+  ///
+  /// A broadcast stream of isolate up events.
+  ///
   Stream<IsolateRef> get onIsolateUp => _isolateUpEvents.stream;
 
-  /**
-   * A broadcast stream of error thrown and not catched by code that was executed in the context of an isolate.
-   */
+  ///
+  /// A broadcast stream of error thrown and not catched by code that was executed in the context of an isolate.
+  ///
   Stream<IsolateError> get onError => _errorEvents.stream;
 
-  /**
-   * The [ShutdownRequestListener] is called, when the isolate this context is bound to, receives a shutdown request.
-   */
+  ///
+  /// The [ShutdownRequestListener] is called, when the isolate this context is bound to, receives a shutdown request.
+  ///
   set shutdownRequestListener(ShutdownRequestListener listener) => _shutdownRequestListener = listener;
 
-  /**
-   * Spawns a new isolate in the cluster this node belongs to. The provided
-   * [entryPointOrUri] has to be an [EntryPoint] or an [URI].
-   *
-   * In the first case, the [EntryPoint] is called after the isolate is spawned.
-   * The entry point is executed in spawned isolate.
-   *
-   * In the second case, the main(args, message) function of the give target file is called. In
-   * the main funtion, the first call should be [bootstrapIsolate(dynamic, EntryPoint)]
-   * to bootstrap the cluster environment. The first parameter has to be the [message] parameter
-   * of the main() function. When the environment is up, the given [EntryPoint] is called.
-   *
-   * You can provide some [properties] optionally.
-   *
-   * This method returns a future which completes with an reference to the isolate. The future completes
-   * when the new isolate is spawned, but the [EntryPoint] of the new isolate may not be completely executed.
-   */
+  ///
+  /// Spawns a new isolate in the cluster this node belongs to. The provided
+  /// [entryPointOrUri] has to be an [EntryPoint] or an [URI].
+  ///
+  /// In the first case, the [EntryPoint] is called after the isolate is spawned.
+  /// The entry point is executed in spawned isolate.
+  ///
+  /// In the second case, the main(args, message) function of the give target file is called. In
+  /// the main funtion, the first call should be [bootstrapIsolate(dynamic, EntryPoint)]
+  /// to bootstrap the cluster environment. The first parameter has to be the [message] parameter
+  /// of the main() function. When the environment is up, the given [EntryPoint] is called.
+  ///
+  /// You can provide some [properties] optionally.
+  ///
+  /// This method returns a future which completes with an reference to the isolate. The future completes
+  /// when the new isolate is spawned, but the [EntryPoint] of the new isolate may not be completely executed.
+  ///
   Future<IsolateRef> spawnIsolate(Uri path, dynamic entryPointOrUri, [Map<String, dynamic> properties]) async {
     _log.fine('[${_localIsolateRef}][spawnIsolate] path=$path, endPointOrUri=$entryPointOrUri, properties=$properties');
     _nextCompleterRef++;
@@ -209,6 +208,7 @@ class IsolateContext {
     return completer.future;
   }
 
+  ///
   /// Looks up an isolate by its path.
   ///
   /// The returned future completes with a [IsolateRef], if an isolate with the given path is present in this cluster.
@@ -236,6 +236,7 @@ class IsolateContext {
     return completer.future;
   }
 
+  ///
   /// Looks up one or more isolates by its path.
   ///
   /// The returned furutre complets with a [List] of [IsolateRef], if any isolate beneath the given path is present in
@@ -262,9 +263,9 @@ class IsolateContext {
     return completer.future;
   }
 
-  /**
-   * Shuts down the isolate this context is bound to.
-   */
+  ///
+  /// Shuts down the isolate this context is bound to.
+  ///
   shutdownIsolate() {
     _log.fine('[${_localIsolateRef}][shutdownIsolate]');
     _payloadEvents.close();
@@ -272,9 +273,9 @@ class IsolateContext {
     _sendPort.send(_IsolateReadyForShutdownMsg.INSTANCE.toMap());
   }
 
-  /**
-   * Shuts down the node of the isolate this context is bound to.
-   */
+  ///
+  /// Shuts down the node of the isolate this context is bound to.
+  ///
   shutdownNode({Duration timeout}) {
     _log.fine('[${_localIsolateRef}][shutdownNode] timeout=$timeout');
     _sendPort.send(new _NodeShutdownRequestMsg(timeout).toMap());
@@ -381,11 +382,11 @@ void _bootstrapIsolate(_IsolateBootstrapMsg msg) {
   });
 }
 
-/**
- * This function is supposed to be called as first operation in a main(args, message) function of an isolate,
- * if the isolate is spawned using an [URI]. You have to provide the second argument of the main function (the
- * initial message) to this function.
- */
+///
+/// This function is supposed to be called as first operation in a main(args, message) function of an isolate,
+/// if the isolate is spawned using an [URI]. You have to provide the second argument of the main function (the
+/// initial message) to this function.
+///
 bootstrapIsolate(dynamic message, EntryPoint entryPoint) {
   final bootstrapMsg = new _IsolateBootstrapMsg(message[0], message[1], entryPoint, message[2], message[3] as Map<String, dynamic>);
   _bootstrapIsolate(bootstrapMsg);

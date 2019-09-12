@@ -69,7 +69,7 @@ awaitMessagesInTest(int msgCount, {int port: 5000, int timeout: 10000}) async {
   var timer = new Timer(new Duration(milliseconds: timeout), () => completer.completeError('timeout after ${timeout}ms'));
   var serverSocket = await ServerSocket.bind('localhost', port);
   serverSocket.listen((socket) {
-    socket.transform(utf8.decoder).listen((data) {
+    utf8.decoder.bind(socket).listen((data) {
       messages.add(data);
       socket.close();
       serverSocket.close();

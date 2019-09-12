@@ -92,18 +92,10 @@ class _PayloadMsg {
         correlationId = map[_CORRELATION_ID];
 
   Map<String, dynamic> toMap() {
-    return {
-      _MSG_TYPE: _PAYLOAD_MSG,
-      _SENDER: sender?._toMap(),
-      _REPLY_TO: replyTo?._toMap(),
-      _PAYLOAD: payload,
-      _TYPE: type,
-      _CORRELATION_ID: correlationId
-    };
+    return {_MSG_TYPE: _PAYLOAD_MSG, _SENDER: sender?._toMap(), _REPLY_TO: replyTo?._toMap(), _PAYLOAD: payload, _TYPE: type, _CORRELATION_ID: correlationId};
   }
 
-  String toString() =>
-      '[_PayloadMsg: sender=$sender, replyTo=$replyTo, payload=$payload, type=$type, correlationId=$correlationId]';
+  String toString() => '[_PayloadMsg: sender=$sender, replyTo=$replyTo, payload=$payload, type=$type, correlationId=$correlationId]';
 }
 
 class _IsolateSpawnMsg {
@@ -133,8 +125,7 @@ class _IsolateSpawnMsg {
     };
   }
 
-  String toString() =>
-      '[_IsolateSpawnMsg: correlationId=$correlationId, path=$path, entryPoint=$entryPoint, properties=$properties]';
+  String toString() => '[_IsolateSpawnMsg: correlationId=$correlationId, path=$path, entryPoint=$entryPoint, properties=$properties]';
 }
 
 class _IsolateSpawnedMsg {
@@ -150,12 +141,7 @@ class _IsolateSpawnedMsg {
         error = map[_ERROR];
 
   Map<String, dynamic> toMap() {
-    return {
-      _MSG_TYPE: _ISOLATE_SPAWNED_MSG,
-      _CORRELATION_ID: correlationId,
-      _ISOLATE_REF: isolateRef?._toMap(),
-      _ERROR: error
-    };
+    return {_MSG_TYPE: _ISOLATE_SPAWNED_MSG, _CORRELATION_ID: correlationId, _ISOLATE_REF: isolateRef?._toMap(), _ERROR: error};
   }
 
   String toString() => '[_IsolateSpawnedMsg: correlationId=$correlationId, isolateRef=$isolateRef, error=$error]';
@@ -174,11 +160,7 @@ class _IsolateLookUpMsg {
         path = Uri.parse(map[_PATH]);
 
   Map<String, dynamic> toMap() {
-    return {
-      _MSG_TYPE: _ISOLATE_LOOK_UP_MSG, 
-      _CORRELATION_ID: correlationId,
-      _SINGLE_ISOLATE: singleIsolate, 
-      _PATH: path?.toString()};
+    return {_MSG_TYPE: _ISOLATE_LOOK_UP_MSG, _CORRELATION_ID: correlationId, _SINGLE_ISOLATE: singleIsolate, _PATH: path?.toString()};
   }
 
   String toString() => '[_IsolateLookUpMsg: correlationId=$correlationId, path=$path]';
@@ -255,8 +237,7 @@ class _NodeShutdownRequestMsg {
 
   _NodeShutdownRequestMsg(this.duration);
 
-  _NodeShutdownRequestMsg.fromMap(Map<String, dynamic> map)
-      : duration = map[_DURATION] != null ? new Duration(milliseconds: map[_DURATION]) : null;
+  _NodeShutdownRequestMsg.fromMap(Map<String, dynamic> map) : duration = map[_DURATION] != null ? new Duration(milliseconds: map[_DURATION]) : null;
 
   Map<String, dynamic> toMap() {
     return {_MSG_TYPE: _NODE_SHUTDOWN_REQUEST_MSG, _DURATION: duration?.inMilliseconds};

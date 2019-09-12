@@ -1,9 +1,9 @@
 part of isolate_cluster;
 
-/**
- * Create an instance of this class to start a node of an isolate cluster. All isolates spawned by any node of the same
- * cluster will be able to communicate with each other using the provided API.
- */
+///
+/// Create an instance of this class to start a node of an isolate cluster. All isolates spawned by any node of the same
+/// cluster will be able to communicate with each other using the provided API.
+///
 class IsolateCluster {
   final Logger _log = new Logger('isolate_cluster.cluster');
   final Map<Uri, _IsolateInfo> _isolateInfos = {};
@@ -11,9 +11,9 @@ class IsolateCluster {
   bool _queueing = false;
   bool _up = false;
 
-  /**
-   * Creates the node for a single-node cluster. After the is constructed, the the cluster is up and usable.
-   */
+  ///
+  /// Creates the node for a single-node cluster. The returned cluster is up and usable.
+  ///
   IsolateCluster.singleNode() {
     _log.fine('[singleNode]');
     _up = true;
@@ -21,23 +21,23 @@ class IsolateCluster {
 
   get up => _up;
 
-  /**
-   * Spawns a new isolate in the cluster this node belongs to. The provided
-   * [entryPointOrUri] has be an [EntryPoint] or an [URI].
-   *
-   * In the first case, the [EntryPoint] is called after the isolate is spawned. 
-   * The entry point is executed in spawned isolate.
-   *
-   * In the second case, the main(args, message) function of the given target file is called. In
-   * the main function, the first call should be [bootstrapIsolate(dynamic, EntryPoint)]
-   * to bootstrap the cluster environment. The first parameter has to be the [message] parameter
-   * of the main(args, message) function. When the environment is up, the given [EntryPoint] is called.
-   *
-   * You can provide some [properties] optionally.
-   *
-   * This method returns a future which completes with an reference to the isolate. The future completes 
-   * when the new isolate is spawned, but the [EntryPoint] of the new isolate may not be completely executed. 
-   */
+  ///
+  /// Spawns a new isolate in the cluster this node belongs to. The provided
+  /// [entryPointOrUri] has be an [EntryPoint] or an [URI].
+  ///
+  /// In the first case, the [EntryPoint] is called after the isolate is spawned.
+  /// The entry point is executed in spawned isolate.
+  ///
+  /// In the second case, the main(args, message) function of the given target file is called. In
+  /// the main function, the first call should be [bootstrapIsolate(dynamic, EntryPoint)]
+  /// to bootstrap the cluster environment. The first parameter has to be the [message] parameter
+  /// of the main(args, message) function. When the environment is up, the given [EntryPoint] is called.
+  ///
+  /// You can provide some [properties] optionally.
+  ///
+  /// This method returns a future which completes with an reference to the isolate. The future completes
+  /// when the new isolate is spawned, but the [EntryPoint] of the new isolate may not be completely executed.
+  ///
   Future<IsolateRef> spawnIsolate(Uri path, dynamic entryPointOrUri, [Map<String, dynamic> properties]) async {
     _log.fine('[spawnIsolate] path=$path, entryPointOrUri=$entryPointOrUri, properties=$properties ');
 
@@ -135,6 +135,7 @@ class IsolateCluster {
     return completer.future;
   }
 
+  ///
   /// Looks up an isolate by its path.
   ///
   /// The returned future completes with a [IsolateRef], if an isolate with the given path is present in this cluster.
@@ -150,6 +151,7 @@ class IsolateCluster {
     return new Future.value(_isolateInfos[path]?.isolateRef);
   }
 
+  ///
   /// Looks up one or more isolates by its path.
   ///
   /// The returned furutre complets with a [List] of [IsolateRef], if any isolate beneath the given path is present in
@@ -169,7 +171,7 @@ class IsolateCluster {
     if (!path.hasAbsolutePath) {
       throw new ArgumentError('parameter [path] must be an absolte uri!');
     }
-    if (!path.pathSegments.last.isEmpty) {
+    if (path.pathSegments.last.isNotEmpty) {
       throw new ArgumentError('parameter [path] must end with a slash (/)!');
     }
 
@@ -184,15 +186,15 @@ class IsolateCluster {
     return new Future.value(result);
   }
 
-  /**
-   * Shuts down this node of the cluster. Every isolate spawned by this node will receive a request for shutdown. When
-   * all isolates have accepted the request, the future returned completes with [true].
-   *
-   * If any isolate do not accept the shut down request within the given [timeout], the future returned completes with
-   * [false].
-   *
-   * In both cases, when the future is completed, all isolates of this node are killed.
-   */
+  ///
+  /// Shuts down this node of the cluster. Every isolate spawned by this node will receive a request for shutdown. When
+  /// all isolates have accepted the request, the future returned completes with [true].
+  ///
+  /// If any isolate do not accept the shut down request within the given [timeout], the future returned completes with
+  /// [false].
+  ///
+  /// In both cases, when the future is completed, all isolates of this node are killed.
+  ///
   Future<bool> shutdown({Duration timeout}) {
     _log.fine('[shutdown] timeout=$timeout');
 
