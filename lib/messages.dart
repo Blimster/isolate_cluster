@@ -230,7 +230,7 @@ class _IsolateUpMsg {
 }
 
 class _IsolateShutdownRequestMsg {
-  static const _IsolateShutdownRequestMsg INSTANCE = const _IsolateShutdownRequestMsg();
+  static const _IsolateShutdownRequestMsg INSTANCE = _IsolateShutdownRequestMsg();
 
   const _IsolateShutdownRequestMsg();
 
@@ -242,7 +242,7 @@ class _IsolateShutdownRequestMsg {
 }
 
 class _IsolateReadyForShutdownMsg {
-  static const _IsolateReadyForShutdownMsg INSTANCE = const _IsolateReadyForShutdownMsg();
+  static const _IsolateReadyForShutdownMsg INSTANCE = _IsolateReadyForShutdownMsg();
 
   const _IsolateReadyForShutdownMsg();
 

@@ -1,3 +1,7 @@
+# Version 0.17.2+2
+
+- More improvement of pub.dev score
+
 # Version 0.17.2+1
 
 - Improved pub.dev score

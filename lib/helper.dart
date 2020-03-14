@@ -71,7 +71,6 @@ class IsolateRefGroup {
   final Uri _path;
   final Map<Uri, IsolateRef> _isolates = SplayTreeMap((k1, k2) => k1.toString().compareTo(k2.toString()));
   _IsolateRefGroupState _state = _IsolateRefGroupState.CREATED;
-  int _isolateIndex = 0;
 
   IsolateRefGroup._internal(Uri path) : this._path = path {
     if (_context == null) {

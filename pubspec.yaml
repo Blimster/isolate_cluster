@@ -1,5 +1,5 @@
 name: isolate_cluster
-version: 0.17.2+1
+version: 0.17.2+2
 description: A library to build up a cluster of isolates. In a cluster an isolate can spawn or lookup other isolates and send messages to other isolates.
 homepage: https://www.github.com/blimster/isolate_cluster
 
