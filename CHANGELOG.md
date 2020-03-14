@@ -1,3 +1,7 @@
+# Version 0.17.2+1
+
+- Improved pub.dev score
+
 # Version 0.17.2
 
 - Fix for breaking change in Dart SDK 2.5.0

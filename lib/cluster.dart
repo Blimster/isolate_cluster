@@ -5,9 +5,9 @@ part of isolate_cluster;
 /// cluster will be able to communicate with each other using the provided API.
 ///
 class IsolateCluster {
-  final Logger _log = new Logger('isolate_cluster.cluster');
+  final Logger _log = Logger('isolate_cluster.cluster');
   final Map<Uri, _IsolateInfo> _isolateInfos = {};
-  final Queue<Function> _taskQueue = new Queue();
+  final Queue<Function> _taskQueue = Queue();
   bool _queueing = false;
   bool _up = false;
 
@@ -43,74 +43,74 @@ class IsolateCluster {
 
     // create a copy of the provided map or an empty one, if the caller do not provide properties
     if (properties != null) {
-      properties = new Map.from(properties);
+      properties = Map.from(properties);
     } else {
       properties = {};
     }
 
     // validate path param
     if (path == null) {
-      throw new ArgumentError.notNull('path');
+      throw ArgumentError.notNull('path');
     }
     if (!path.hasAbsolutePath) {
-      throw new ArgumentError('parameter [path] must be an absolte uri!');
+      throw ArgumentError('parameter [path] must be an absolte uri!');
     }
 
     // this method returns a future that completes to an isolate ref. the completer helps to create that future.
-    Completer<IsolateRef> completer = new Completer();
+    Completer<IsolateRef> completer = Completer();
 
     // create the function that spawns the isolate.
     var spawnFunction = () async {
       if (!_up) {
-        completer.completeError(new StateError("node is down!"));
+        completer.completeError(StateError("node is down!"));
         return;
       }
       if (path.pathSegments.last.isEmpty) {
         // path ends with a slash(/). add an segment to the path, so the path is
         // unique
-        var temp = path.resolve(new Uuid().v4());
+        var temp = path.resolve(Uuid().v4());
         while (_isolateInfos.containsKey(temp)) {
-          temp = path.resolve(new Uuid().v4());
+          temp = path.resolve(Uuid().v4());
         }
         path = temp;
       } else {
         // path does not end with a slash (/). is the path already in use?
         if (_isolateInfos.containsKey(path)) {
-          completer.completeError(new ArgumentError.value(path?.path, 'path', 'path already in use!'));
+          completer.completeError(ArgumentError.value(path?.path, 'path', 'path already in use!'));
           return;
         }
       }
 
       // create receive port for the bootstrap response
-      var receivePortBootstrap = new ReceivePort();
+      var receivePortBootstrap = ReceivePort();
 
       // create a container for isolate object
-      var isolateInfo = new _IsolateInfo();
+      var isolateInfo = _IsolateInfo();
 
       // create a port to receive messages from the isolate
-      isolateInfo.receivePort = new ReceivePort();
+      isolateInfo.receivePort = ReceivePort();
 
       // spawn the isolate and wait for it
       if (entryPointOrUri is EntryPoint) {
         EntryPoint entryPoint = entryPointOrUri;
         isolateInfo.isolate = await Isolate.spawn(
             _bootstrapIsolate,
-            new _IsolateBootstrapMsg(
+            _IsolateBootstrapMsg(
                 receivePortBootstrap.sendPort, isolateInfo.receivePort.sendPort, entryPoint, path, properties));
       } else if (entryPointOrUri is Uri) {
         Uri uri = entryPointOrUri;
-        isolateInfo.isolate = await Isolate
-            .spawnUri(uri, [], [receivePortBootstrap.sendPort, isolateInfo.receivePort.sendPort, path, properties]);
+        isolateInfo.isolate = await Isolate.spawnUri(
+            uri, [], [receivePortBootstrap.sendPort, isolateInfo.receivePort.sendPort, path, properties]);
       } else {
-        throw new ArgumentError("parameter 'target' must be of type Uri or EntryPoint!");
+        throw ArgumentError("parameter 'target' must be of type Uri or EntryPoint!");
       }
 
       // wait for the first message from the spawned isolate
       final isolateBootstrappedMsg =
-          new _IsolateBootstrappedMsg.fromMap(await receivePortBootstrap.first as Map<String, dynamic>);
+          _IsolateBootstrappedMsg.fromMap(await receivePortBootstrap.first as Map<String, dynamic>);
 
       // create and store a reference to the spawned isolate
-      isolateInfo.isolateRef = new IsolateRef._internal(isolateBootstrappedMsg.sendPort, path, properties);
+      isolateInfo.isolateRef = IsolateRef._internal(isolateBootstrappedMsg.sendPort, path, properties);
 
       // start listening to messages from the isolate
       isolateInfo.receivePort.listen((msg) => _processMessage(isolateInfo.isolateRef, msg));
@@ -119,7 +119,7 @@ class IsolateCluster {
       _isolateInfos.values
           .map((i) => i.isolateRef)
           .where((ref) => ref != isolateInfo.isolateRef)
-          .forEach((ref) => ref._sendPort.send(new _IsolateUpMsg(isolateInfo.isolateRef).toMap()));
+          .forEach((ref) => ref._sendPort.send(_IsolateUpMsg(isolateInfo.isolateRef).toMap()));
 
       // store isolate info
       _isolateInfos[path] = isolateInfo;
@@ -146,9 +146,9 @@ class IsolateCluster {
   Future<IsolateRef> lookupIsolate(Uri path) async {
     _log.fine('[lookupIsolate] path=$path');
     if (!_up) {
-      throw new StateError('node is down!');
+      throw StateError('node is down!');
     }
-    return new Future.value(_isolateInfos[path]?.isolateRef);
+    return Future.value(_isolateInfos[path]?.isolateRef);
   }
 
   ///
@@ -162,17 +162,17 @@ class IsolateCluster {
   Future<List<IsolateRef>> lookupIsolates(Uri path) async {
     _log.fine('[lookupIsolates] path=$path');
     if (!_up) {
-      throw new StateError('node is down!');
+      throw StateError('node is down!');
     }
 
     if (path == null) {
-      throw new ArgumentError('parameter [path] not set!');
+      throw ArgumentError('parameter [path] not set!');
     }
     if (!path.hasAbsolutePath) {
-      throw new ArgumentError('parameter [path] must be an absolte uri!');
+      throw ArgumentError('parameter [path] must be an absolte uri!');
     }
     if (path.pathSegments.last.isNotEmpty) {
-      throw new ArgumentError('parameter [path] must end with a slash (/)!');
+      throw ArgumentError('parameter [path] must end with a slash (/)!');
     }
 
     final result = <IsolateRef>[];
@@ -183,7 +183,7 @@ class IsolateCluster {
       }
     });
 
-    return new Future.value(result);
+    return Future.value(result);
   }
 
   ///
@@ -199,7 +199,7 @@ class IsolateCluster {
     _log.fine('[shutdown] timeout=$timeout');
 
     if (!_up) {
-      throw new StateError("node is already down!");
+      throw StateError("node is already down!");
     }
 
     // node is no longer up
@@ -207,7 +207,7 @@ class IsolateCluster {
 
     // set default timeout if not provided
     if (timeout == null) {
-      timeout = new Duration(seconds: 5);
+      timeout = Duration(seconds: 5);
     }
 
     // send a shutdown request to all isolates
@@ -215,9 +215,9 @@ class IsolateCluster {
         .map((i) => i.isolateRef)
         .forEach((ref) => ref._sendPort.send(_IsolateShutdownRequestMsg.INSTANCE.toMap()));
 
-    var completer = new Completer<bool>();
+    var completer = Completer<bool>();
 
-    var sw = new Stopwatch()..start();
+    var sw = Stopwatch()..start();
     var shutdownCompleteWatcher = (Timer timer) {
       if (_isolateInfos.isEmpty) {
         timer.cancel();
@@ -228,7 +228,7 @@ class IsolateCluster {
         completer.complete(false);
       }
     };
-    new Timer.periodic(new Duration(milliseconds: 10), shutdownCompleteWatcher);
+    Timer.periodic(Duration(milliseconds: 10), shutdownCompleteWatcher);
 
     return completer.future;
   }
@@ -243,23 +243,23 @@ class IsolateCluster {
           _killIsolate(_isolateInfos[ref.path]);
           break;
         case _NODE_SHUTDOWN_REQUEST_MSG:
-          final _NodeShutdownRequestMsg nodeShutdownRequestMsg = new _NodeShutdownRequestMsg.fromMap(map);
+          final _NodeShutdownRequestMsg nodeShutdownRequestMsg = _NodeShutdownRequestMsg.fromMap(map);
           await shutdown(timeout: nodeShutdownRequestMsg.duration);
           break;
         case _ISOLATE_SPAWN_MSG:
-          final _IsolateSpawnMsg isolateSpawnMsg = new _IsolateSpawnMsg.fromMap(map);
+          final _IsolateSpawnMsg isolateSpawnMsg = _IsolateSpawnMsg.fromMap(map);
           try {
             final spawnedIsolate = await spawnIsolate(
                 isolateSpawnMsg.path, isolateSpawnMsg.entryPoint ?? isolateSpawnMsg.uri, isolateSpawnMsg.properties);
-            ref._sendPort.send(new _IsolateSpawnedMsg(isolateSpawnMsg.correlationId, spawnedIsolate, null).toMap());
+            ref._sendPort.send(_IsolateSpawnedMsg(isolateSpawnMsg.correlationId, spawnedIsolate, null).toMap());
           } catch (error) {
             ref._sendPort.send(
-                new _IsolateSpawnedMsg(isolateSpawnMsg.correlationId, null, error is String ? error : error.toString())
+                _IsolateSpawnedMsg(isolateSpawnMsg.correlationId, null, error is String ? error : error.toString())
                     .toMap());
           }
           break;
         case _ISOLATE_LOOK_UP_MSG:
-          final _IsolateLookUpMsg isolateLookUpMsg = new _IsolateLookUpMsg.fromMap(map);
+          final _IsolateLookUpMsg isolateLookUpMsg = _IsolateLookUpMsg.fromMap(map);
 
           final isolateRefs = <IsolateRef>[];
           if (isolateLookUpMsg.singleIsolate) {
@@ -268,7 +268,7 @@ class IsolateCluster {
             isolateRefs.addAll(await lookupIsolates(isolateLookUpMsg.path));
           }
 
-          ref._sendPort.send(new _IsolateLookedUpMsg(
+          ref._sendPort.send(_IsolateLookedUpMsg(
                   isolateLookUpMsg.correlationId, isolateLookUpMsg.singleIsolate, isolateLookUpMsg.path, isolateRefs)
               .toMap());
           break;
@@ -288,7 +288,7 @@ class IsolateCluster {
     if (newTask != null) {
       _taskQueue.addLast(newTask);
     }
-    new Future(() async {
+    Future(() async {
       // ensure that the queue processing is started only once.
       if (!_queueing) {
         _queueing = true;

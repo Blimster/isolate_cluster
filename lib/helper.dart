@@ -15,14 +15,16 @@ abstract class IsolateRefSelector {
   ///
   /// Selects the targets for form the list of given isolate refs for the given message, type and correlation id.
   ///
-  List<IsolateRef> selectTargetsForMessage(List<IsolateRef> isolateRefs, String message, String type, String correlationId);
+  List<IsolateRef> selectTargetsForMessage(
+      List<IsolateRef> isolateRefs, String message, String type, String correlationId);
 }
 
 class RoundRobinIsolateRefSelector implements IsolateRefSelector {
   int _isolateIndex = 0;
 
   @override
-  List<IsolateRef> selectTargetsForMessage(List<IsolateRef> isolateRefs, String message, String type, String correlationId) {
+  List<IsolateRef> selectTargetsForMessage(
+      List<IsolateRef> isolateRefs, String message, String type, String correlationId) {
     if (isolateRefs == null || isolateRefs.isEmpty) {
       return [];
     }
@@ -40,7 +42,8 @@ class AllIsolateRefSelector implements IsolateRefSelector {
   AllIsolateRefSelector(this._excludeSelf);
 
   @override
-  List<IsolateRef> selectTargetsForMessage(List<IsolateRef> isolateRefs, String message, String type, String correlationId) {
+  List<IsolateRef> selectTargetsForMessage(
+      List<IsolateRef> isolateRefs, String message, String type, String correlationId) {
     if (isolateRefs == null || isolateRefs.isEmpty) {
       return [];
     }
@@ -49,14 +52,14 @@ class AllIsolateRefSelector implements IsolateRefSelector {
       return isolateRefs;
     }
 
-    return new List<IsolateRef>.from(isolateRefs.where((ref) => ref.path != _context.isolateRef.path));
+    return List<IsolateRef>.from(isolateRefs.where((ref) => ref.path != _context.isolateRef.path));
   }
 }
 
 ///
 /// This selector is used by an
 ///
-final IsolateRefSelector DEFAULT_SELECTOR = new RoundRobinIsolateRefSelector();
+final IsolateRefSelector DEFAULT_SELECTOR = RoundRobinIsolateRefSelector();
 
 ///
 /// A group of isolate beneath an URI.
@@ -66,16 +69,16 @@ final IsolateRefSelector DEFAULT_SELECTOR = new RoundRobinIsolateRefSelector();
 ///
 class IsolateRefGroup {
   final Uri _path;
-  final Map<Uri, IsolateRef> _isolates = new SplayTreeMap((k1, k2) => k1.toString().compareTo(k2.toString()));
+  final Map<Uri, IsolateRef> _isolates = SplayTreeMap((k1, k2) => k1.toString().compareTo(k2.toString()));
   _IsolateRefGroupState _state = _IsolateRefGroupState.CREATED;
   int _isolateIndex = 0;
 
   IsolateRefGroup._internal(Uri path) : this._path = path {
     if (_context == null) {
-      throw new StateError('no context available!');
+      throw StateError('no context available!');
     }
     if (path.pathSegments.last.isNotEmpty) {
-      throw new ArgumentError('param [path] must end with a slash (/)!');
+      throw ArgumentError('param [path] must end with a slash (/)!');
     }
   }
 
@@ -85,7 +88,7 @@ class IsolateRefGroup {
     refs.forEach((ref) => _isolates[ref.path] = ref);
     _context.onIsolateUp.where((ref) => ref.path.path.startsWith(_path.toString())).listen(_onIsolateUp);
     _state = _IsolateRefGroupState.INITIALIZED;
-    return new Future.value(this);
+    return Future.value(this);
   }
 
   _onIsolateUp(IsolateRef ref) {
@@ -103,8 +106,8 @@ class IsolateRefGroup {
   /// By default, messages are sent to one isolate using a round robin strategy.
   ///
   send(String message, {String type, String correlationId, IsolateRef replyTo, IsolateRefSelector selector}) {
-    final targets =
-        (selector ?? DEFAULT_SELECTOR).selectTargetsForMessage(new List<IsolateRef>.from(_isolates.values, growable: false), message, type, correlationId);
+    final targets = (selector ?? DEFAULT_SELECTOR).selectTargetsForMessage(
+        List<IsolateRef>.from(_isolates.values, growable: false), message, type, correlationId);
     if (targets != null) {
       targets.forEach((target) => target.send(message, type: type, correlationId: correlationId, replyTo: replyTo));
     }
@@ -117,13 +120,13 @@ class IsolateRefGroup {
 Future<IsolateRefGroup> isolateRefGroupFor(Uri path) async {
   var result = _groups[path.toString()];
   if (result == null) {
-    result = new IsolateRefGroup._internal(path);
+    result = IsolateRefGroup._internal(path);
     if (result._state == _IsolateRefGroupState.CREATED) {
       await result._init();
     }
     _groups[path.toString()] = result;
   }
-  return new Future.value(result);
+  return Future.value(result);
 }
 
 ///
@@ -149,10 +152,10 @@ class MessageDispatcher {
   Future<bool> dispatch(IsolateMessage message) async {
     final handler = _handlers[message.type];
     if (handler == null) {
-      return new Future.value(false);
+      return Future.value(false);
     }
     await handler(message);
-    return new Future.value(true);
+    return Future.value(true);
   }
 
   ///
@@ -162,10 +165,10 @@ class MessageDispatcher {
   ///
   void setHandler(String type, MessageHandler handler) {
     if (type == null || type.trim().isEmpty) {
-      throw new ArgumentError('param [type] must not be null or empty!');
+      throw ArgumentError('param [type] must not be null or empty!');
     }
     if (handler == null) {
-      throw new ArgumentError('param [handler] must not be null!');
+      throw ArgumentError('param [handler] must not be null!');
     }
     _handlers[type.trim()] = handler;
   }

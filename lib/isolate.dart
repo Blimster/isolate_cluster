@@ -107,8 +107,9 @@ class IsolateRef {
   /// Sends a [message] to the isolate represented by this reference.
   ///
   send(String message, {String type, String correlationId, IsolateRef replyTo}) {
-    _isolateRefLog.fine('[${_localIsolateRef}][send] message=$message, type=$type, correlationId=$correlationId, replyTo=$replyTo');
-    _sendPort.send(new _PayloadMsg(_localIsolateRef, replyTo ?? _localIsolateRef, message, type, correlationId).toMap());
+    _isolateRefLog.fine(
+        '[${_localIsolateRef}][send] message=$message, type=$type, correlationId=$correlationId, replyTo=$replyTo');
+    _sendPort.send(_PayloadMsg(_localIsolateRef, replyTo ?? _localIsolateRef, message, type, correlationId).toMap());
   }
 
   ///
@@ -127,16 +128,16 @@ class IsolateRef {
 /// This context is provided to the [EntryPoint] of an isolate spawned by [IsolateCluster]. A context is bound to a single isolate.
 ///
 class IsolateContext {
-  final Logger _log = new Logger('isolate_cluster.context');
+  final Logger _log = Logger('isolate_cluster.context');
   final Map<int, Completer<dynamic>> _pendingCompleters = {};
   final Map<Uri, IsolateRef> _isolateRefs = {};
   final SendPort _sendPort;
   final ReceivePort _receivePort;
   final Uri _path;
   final Map<String, dynamic> _properties;
-  final StreamController<IsolateMessage> _payloadEvents = new StreamController.broadcast();
-  final StreamController<IsolateRef> _isolateUpEvents = new StreamController.broadcast();
-  final StreamController<IsolateError> _errorEvents = new StreamController.broadcast();
+  final StreamController<IsolateMessage> _payloadEvents = StreamController.broadcast();
+  final StreamController<IsolateRef> _isolateUpEvents = StreamController.broadcast();
+  final StreamController<IsolateError> _errorEvents = StreamController.broadcast();
   int _nextCompleterRef = 0;
   ShutdownRequestListener _shutdownRequestListener;
   _EventPublisher _publishEvent;
@@ -200,10 +201,10 @@ class IsolateContext {
   Future<IsolateRef> spawnIsolate(Uri path, dynamic entryPointOrUri, [Map<String, dynamic> properties]) async {
     _log.fine('[${_localIsolateRef}][spawnIsolate] path=$path, endPointOrUri=$entryPointOrUri, properties=$properties');
     _nextCompleterRef++;
-    _sendPort.send(new _IsolateSpawnMsg(
-            _nextCompleterRef, path, entryPointOrUri is EntryPoint ? entryPointOrUri : null, entryPointOrUri is Uri ? entryPointOrUri : null, properties)
+    _sendPort.send(_IsolateSpawnMsg(_nextCompleterRef, path, entryPointOrUri is EntryPoint ? entryPointOrUri : null,
+            entryPointOrUri is Uri ? entryPointOrUri : null, properties)
         .toMap());
-    final completer = new Completer<IsolateRef>();
+    final completer = Completer<IsolateRef>();
     _pendingCompleters[_nextCompleterRef] = completer;
     return completer.future;
   }
@@ -219,19 +220,19 @@ class IsolateContext {
   Future<IsolateRef> lookupIsolate(Uri path) async {
     _log.fine('[${_localIsolateRef}][lookupIsolate] path=$path');
     if (path == null) {
-      throw new ArgumentError('parameter [path] must not be null!');
+      throw ArgumentError('parameter [path] must not be null!');
     }
 
     // maybe we already now the isolate
     var isolateRef = _isolateRefs[path];
     if (isolateRef != null) {
-      return new Future.value(isolateRef);
+      return Future.value(isolateRef);
     }
 
     // the isolate is not know, forward the request to the cluster
     _nextCompleterRef++;
-    _sendPort.send(new _IsolateLookUpMsg(_nextCompleterRef, true, path).toMap());
-    var completer = new Completer<IsolateRef>();
+    _sendPort.send(_IsolateLookUpMsg(_nextCompleterRef, true, path).toMap());
+    var completer = Completer<IsolateRef>();
     _pendingCompleters[_nextCompleterRef] = completer;
     return completer.future;
   }
@@ -247,18 +248,18 @@ class IsolateContext {
   Future<List<IsolateRef>> lookupIsolates(Uri path) async {
     _log.fine('[${_localIsolateRef}][lookupIsolates] path=$path');
     if (path == null) {
-      throw new ArgumentError('parameter [path] must not be null!');
+      throw ArgumentError('parameter [path] must not be null!');
     }
     if (!path.hasAbsolutePath) {
-      throw new ArgumentError('parameter [path] must be an absolute uri!');
+      throw ArgumentError('parameter [path] must be an absolute uri!');
     }
     if (path.pathSegments.last.isNotEmpty) {
-      throw new ArgumentError('parameter [path] must end with a slash (/)!');
+      throw ArgumentError('parameter [path] must end with a slash (/)!');
     }
 
     _nextCompleterRef++;
-    _sendPort.send(new _IsolateLookUpMsg(_nextCompleterRef, false, path).toMap());
-    var completer = new Completer<List<IsolateRef>>();
+    _sendPort.send(_IsolateLookUpMsg(_nextCompleterRef, false, path).toMap());
+    var completer = Completer<List<IsolateRef>>();
     _pendingCompleters[_nextCompleterRef] = completer;
     return completer.future;
   }
@@ -278,7 +279,7 @@ class IsolateContext {
   ///
   shutdownNode({Duration timeout}) {
     _log.fine('[${_localIsolateRef}][shutdownNode] timeout=$timeout');
-    _sendPort.send(new _NodeShutdownRequestMsg(timeout).toMap());
+    _sendPort.send(_NodeShutdownRequestMsg(timeout).toMap());
   }
 
   _processMessage(var msg) {
@@ -288,11 +289,12 @@ class IsolateContext {
       String type = map[_MSG_TYPE];
       switch (type) {
         case _PAYLOAD_MSG:
-          final _PayloadMsg payloadMsg = new _PayloadMsg.fromMap(map);
-          _publishEvent(new IsolateMessage._internal(payloadMsg.sender, payloadMsg.replyTo, payloadMsg.payload, payloadMsg.type, payloadMsg.correlationId));
+          final _PayloadMsg payloadMsg = _PayloadMsg.fromMap(map);
+          _publishEvent(IsolateMessage._internal(
+              payloadMsg.sender, payloadMsg.replyTo, payloadMsg.payload, payloadMsg.type, payloadMsg.correlationId));
           break;
         case _ISOLATE_UP_MSG:
-          _publishEvent(new _IsolateUpMsg.fromMap(map).isolateRef);
+          _publishEvent(_IsolateUpMsg.fromMap(map).isolateRef);
           break;
         case _ISOLATE_SHUTDOWN_REQUEST_MSG:
           if (_shutdownRequestListener != null) {
@@ -302,7 +304,7 @@ class IsolateContext {
           }
           break;
         case _ISOLATE_SPAWNED_MSG:
-          final _IsolateSpawnedMsg isolateSpawnedMsg = new _IsolateSpawnedMsg.fromMap(map);
+          final _IsolateSpawnedMsg isolateSpawnedMsg = _IsolateSpawnedMsg.fromMap(map);
           final completer = _pendingCompleters.remove(isolateSpawnedMsg.correlationId);
           if (isolateSpawnedMsg.error != null) {
             completer.completeError(isolateSpawnedMsg.error);
@@ -312,7 +314,7 @@ class IsolateContext {
           }
           break;
         case _ISOLATE_LOOKED_UP_MSG:
-          final _IsolateLookedUpMsg isolateLookedUpMsg = new _IsolateLookedUpMsg.fromMap(map);
+          final _IsolateLookedUpMsg isolateLookedUpMsg = _IsolateLookedUpMsg.fromMap(map);
           if (isolateLookedUpMsg.isolateRefs != null) {
             isolateLookedUpMsg.isolateRefs.forEach((ref) => _isolateRefs[ref._path] = ref);
             final completer = _pendingCompleters.remove(isolateLookedUpMsg.correlationId);
@@ -333,19 +335,19 @@ class IsolateContext {
 // this function is called after the new isolate is spawned
 void _bootstrapIsolate(_IsolateBootstrapMsg msg) {
   runZoned(() {
-    var receivePort = new ReceivePort();
+    var receivePort = ReceivePort();
 
     // initialize the local isolate ref
-    _localIsolateRef = new IsolateRef._internal(receivePort.sendPort, msg.path, msg.properties);
+    _localIsolateRef = IsolateRef._internal(receivePort.sendPort, msg.path, msg.properties);
 
     // create the context and store it local to this isolate
-    _context = new IsolateContext._internal(msg.sendPortPayload, receivePort, msg.path, msg.properties);
+    _context = IsolateContext._internal(msg.sendPortPayload, receivePort, msg.path, msg.properties);
 
     // send the send port of this isolate to the node
-    msg.sendPortBootstrap.send(new _IsolateBootstrappedMsg(receivePort.sendPort).toMap());
+    msg.sendPortBootstrap.send(_IsolateBootstrappedMsg(receivePort.sendPort).toMap());
 
     // before the entry point is completely executed, buffer incoming event in a queue
-    Queue eventQueue = new Queue();
+    Queue eventQueue = Queue();
     _context._publishEvent = (event) {
       eventQueue.add(event);
     };
@@ -374,7 +376,7 @@ void _bootstrapIsolate(_IsolateBootstrapMsg msg) {
     }
   }, onError: (error, stacktrace) {
     if (_context._errorEvents.hasListener) {
-      _context._errorEvents.add(new IsolateError(error, stacktrace));
+      _context._errorEvents.add(IsolateError(error, stacktrace));
     } else {
       _context._log.warning(
           '[${_localIsolateRef}] - an error was thrown (and not catched) by code running in the context of this isolate and there is no error listener registered! error=$error, stacktrace=${stacktrace}');
@@ -388,7 +390,8 @@ void _bootstrapIsolate(_IsolateBootstrapMsg msg) {
 /// initial message) to this function.
 ///
 bootstrapIsolate(dynamic message, EntryPoint entryPoint) {
-  final bootstrapMsg = new _IsolateBootstrapMsg(message[0], message[1], entryPoint, message[2], message[3] as Map<String, dynamic>);
+  final bootstrapMsg =
+      _IsolateBootstrapMsg(message[0], message[1], entryPoint, message[2], message[3] as Map<String, dynamic>);
   _bootstrapIsolate(bootstrapMsg);
 }
 
@@ -399,4 +402,4 @@ IsolateRef _localIsolateRef;
 IsolateContext _context;
 
 // logger for IsolateRef (it is not part of the class, because the class is sent to other isolates)
-Logger _isolateRefLog = new Logger('isolate_cluster.ref');
+Logger _isolateRefLog = Logger('isolate_cluster.ref');
